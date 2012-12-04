@@ -1,0 +1,33 @@
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+=========
+
+This package contains schematics and driver for a CAN Bus interface for
+the Raspberry Pi Computer (http://www.raspberrypi.org).
+The driver is based on the PEAK-Systems Linux driver 7.6 published under
+the GNU General Public License.
+
+AsynPortDrivers for the EPICS control system framework are also included.
+Currently these AsynPortDrivers support
+- the CAN interface (as lower-level driver used by all other drivers)
+- ISEG EHS/EDS high voltage modules
+- Wiener VME crate remote control
+- Temperature and Humidity Monitoring board for PANDA (THMP)
+- PANDA-EMC light pulser
+
+To use the AsynPortDrivers you will need
+- EPICS base (http://www.aps.anl.gov/epics/)
+- SNL Sequncer (http://www-csr.bessy.de/control/SoftDist/sequencer/)
+- AsynDriver (http://www.aps.anl.gov/epics/modules/soft/asyn/)

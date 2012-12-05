@@ -26,6 +26,7 @@
 #define __ASYN_ISEG_HV_H__
 
 //_____ I N C L U D E S _______________________________________________________
+#include <map>
 #include "asynPortDriver.h"
 
 //_____ D E F I N I T I O N S __________________________________________________
@@ -79,6 +80,15 @@ class drvAsynIsegHv : public asynPortDriver {
 #define LAST_ISEGHV_COMMAND P_SwitchOnOff
 
  private:
+  struct isegFrame {
+    epicsUInt8    dlc;
+    epicsUInt8    data0;
+    epicsUInt8    data1;
+  };
+
+  std::map<int, isegFrame> cmdsFloat64_;
+  std::map<int, isegFrame> cmdsUIn32D_;
+
   char           *deviceName_;
   epicsUInt32     can_id_;
   asynUser       *pAsynUserGenericPointer_;

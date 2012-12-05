@@ -204,11 +204,9 @@ drvAsynRPiCan::drvAsynRPiCan( const char *portName, const char *ttyName, const i
 {
   const char *functionName = "drvAsynRPiCan";
   
-  this->eventId_ = epicsEventCreate( epicsEventEmpty );
   createParam( P_GENERIC_String, asynParamGenericPointer, &P_GENERIC );
   
   deviceName_ = epicsStrDup( ttyName );
-  bitrate_ = bitrate;
 
   // open interface
   fd_ = open( deviceName_, O_RDWR );
@@ -219,9 +217,9 @@ drvAsynRPiCan::drvAsynRPiCan( const char *portName, const char *ttyName, const i
   }
   
   // set baudrate
-  if ( bitrate_ != DEFAULT_BITRATE ) {
+  if ( bitrate != DEFAULT_BITRATE ) {
     int err;
-    TPBTR0BTR1 ratix = { bitrate_, 0 };
+    TPBTR0BTR1 ratix = { bitrate, 0 };
     err = ioctl( fd_, CAN_BITRATE, &ratix );
     if ( err ) {
       fprintf( stderr, "\033[31;1m %s:%s: Could not change bitrate for interface '%s'. %s \033[0m \n",

@@ -65,14 +65,15 @@
      on the IOC. It is used as lower-level driver for the communication with
      the hardware.<br /><br />
      CAN interfaces are configured with the <tt>drvAsynRPiCanConfigure</tt> command:</p>
-  <pre>  drvAsynRPiCanConfigure( "portName", "canName", bitrate )</pre>
+  <pre>  drvAsynRPiCanConfigure( "portName", "canName" )</pre>
   <p>where the arguments are:</p>
   <ul>
     <li>portName - The portName that is registered with asynManager.</li>
     <li>canName - The name of the local CAN interface (e.g. "/dev/can", "COM1").</li>
-    <li>bitrate - The bitrate used for CAN messages in bit/s.<br />
-      Allowed values are: 5000, 10000, 20000, 50000, 100000, 125000, 250000, 500000, and 1000000</li>
   </ul>
+  <p>This driver uses asynOption to set the bitrate for CAN messages in bit/s.<br />
+      Allowed values are: 5000, 10000, 20000, 50000, 100000, 125000, 250000, 500000, and 1000000</p>
+  <pre>  asynSetOption( "portName", "bitrate", bitrate )</pre>
 
   <hr />
   <div style="text-align: center">
@@ -212,7 +213,8 @@
   <div style="text-align: center">
     <h2 id="drvAsynTHMP">drvAsynTHMP</h2>
   </div>
-  <p>The drvAsynTHMP driver supports the THMP. It uses the drvAsynRPiCan driver as lower-level driver.
+  <p>The drvAsynTHMP driver supports the Temperature and Humidity Monitoring Board for PANDA (THMP).
+    It uses the drvAsynRPiCan driver as lower-level driver.
     Therefore the drvAsynRPiCan driver has to be configured before using this driver.
     <br /><br />
     A THMP is configured with the <tt>drvAsynTHMPConfigure</tt> command:</p>

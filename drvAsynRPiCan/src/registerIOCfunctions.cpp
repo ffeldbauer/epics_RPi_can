@@ -67,19 +67,17 @@ extern "C" {
   //!
   //! @param   [in]  portName The name of the asyn port driver to be created.
   //!          [in]  ttyName  The name of the interface 
-  //!          [in]  bitrate  The bitrate of the CAN interface
   //----------------------------------------------------------------------------
-  int drvAsynRPiCanConfigure( const char *portName, const char *ttyName, const int bitrate ) {
-    new drvAsynRPiCan( portName, ttyName, bitrate );
+  int drvAsynRPiCanConfigure( const char *portName, const char *ttyName ) {
+    new drvAsynRPiCan( portName, ttyName );
     return( asynSuccess );
   }
   static const iocshArg initRPiCanArg0 = { "portName", iocshArgString };
   static const iocshArg initRPiCanArg1 = { "ttyName",  iocshArgString };
-  static const iocshArg initRPiCanArg2 = { "bitrate",  iocshArgInt };
-  static const iocshArg * const initRPiCanArgs[] = { &initRPiCanArg0, &initRPiCanArg1, &initRPiCanArg2 };
-  static const iocshFuncDef initRPiCanFuncDef = { "drvAsynRPiCanConfigure", 3, initRPiCanArgs };
+  static const iocshArg * const initRPiCanArgs[] = { &initRPiCanArg0, &initRPiCanArg1 };
+  static const iocshFuncDef initRPiCanFuncDef = { "drvAsynRPiCanConfigure", 2, initRPiCanArgs };
   static void initRPiCanCallFunc( const iocshArgBuf *args ) {
-    drvAsynRPiCanConfigure( args[0].sval, args[1].sval, args[2].ival );
+    drvAsynRPiCanConfigure( args[0].sval, args[1].sval );
   }
   
   //----------------------------------------------------------------------------

@@ -50,7 +50,6 @@
 #include "drvAsynRPiCanDebug.h"
 
 //_____ D E F I N I T I O N S __________________________________________________
-#define DEFAULT_BITRATE 125000U
 
 //_____ G L O B A L S __________________________________________________________
 
@@ -113,6 +112,68 @@ asynStatus drvAsynRPiCan::writeGenericPointer( asynUser *pasynUser, void *generi
              driverName, functionName, strerror( err ) );
     return asynError;
   }  
+  return asynSuccess;
+}
+
+//------------------------------------------------------------------------------
+//! @brief   Called from asynGetOption shell command
+//!
+//! @param   [in]  pasynUser       pasynUser structure that encodes the reason and address.
+//!          [in]  key             Name of option
+//!          [out] value           String containing the value for the option
+//!          []    maxChars        
+//------------------------------------------------------------------------------
+asynStatus drvAsynRPiCan::readOption( asynUser *pasynUser, const char *key,
+                                      char *value, int maxChars ) {
+  if( epicsStrCaseCmp( key, "bitrate" ) == 0 ) {
+    // currently reading the actual bitrate is not supported by kernel module
+    char dummy[10];
+    sprintf( dummy, "%u", bitrate_ );
+    strcpy(value, dummy);
+  } else {
+      epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize,
+                     "%s:%s: Invalid option key '%s'",
+                     driverName, functionName, key );
+      return asynError;
+  }
+    
+  return asynSuccess;
+}
+
+//------------------------------------------------------------------------------
+//! @brief   Called from asynSetOption shell command
+//!
+//! @param   [in]  pasynUser       pasynUser structure that encodes the reason and address.
+//!          [in]  key             Name of option
+//!          [in]  value           String containing the value for the option
+//------------------------------------------------------------------------------
+asynStatus drvAsynRPiCan::writeOption( asynUser *pasynUser, const char *key, const char *value ) {
+  const char* functionName = "writeOption";
+
+  if( epicsStrCaseCmp( key, "bitrate" ) == 0 ) {
+    int bitrate;
+    if( sscanf( value, "%d", &bitrate ) != 1 ) {
+      epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize,
+                     "Bad number");
+      return asynError;
+    }
+    
+    TPBTR0BTR1 ratix = { bitrate, 0 };
+    int err = ioctl( fd_, CAN_BITRATE, &ratix );
+    if ( err ) {
+      epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize,
+                     "%s:%s: Could not change bitrate for interface '%s'. %s",
+                     driverName, functionName, deviceName_, strerror( err ) );
+      return asynError;
+    }
+    bitrate_ = bitrate;
+  } else {
+      epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize,
+                     "%s:%s: Invalid option key '%s'",
+                     driverName, functionName, key );
+      return asynError;
+  }
+
   return asynSuccess;
 }
 
@@ -191,11 +252,11 @@ int drvAsynRPiCan::drvRPiCanRead( can_frame_t *pframe, int timeout ){
 //!          [in]  ttyName  The name of the device
 //!          [in]  bitrate  The bitrate of the CAN interface
 //------------------------------------------------------------------------------
-drvAsynRPiCan::drvAsynRPiCan( const char *portName, const char *ttyName, const int bitrate ) 
+drvAsynRPiCan::drvAsynRPiCan( const char *portName, const char *ttyName ) 
   : asynPortDriver( portName,
                     1, /* maxAddr */ 
-                    NUM_RPICAN_PARAMS,
-                    asynCommonMask | asynGenericPointerMask | asynDrvUserMask, /* Interface mask */
+                    0,
+                    asynCommonMask | asynGenericPointerMask | asynOptionMask | asynDrvUserMask, /* Interface mask */
                     asynCommonMask | asynGenericPointerMask,  /* Interrupt mask */
                     ASYN_CANBLOCK, /* asynFlags.  This driver does not block and it is not multi-device, so flag is 0 */
                     1, /* Autoconnect */
@@ -203,9 +264,7 @@ drvAsynRPiCan::drvAsynRPiCan( const char *portName, const char *ttyName, const i
                     0 ) /* Default stack size*/    
 {
   const char *functionName = "drvAsynRPiCan";
-  
-  createParam( P_GENERIC_String, asynParamGenericPointer, &P_GENERIC );
-  
+    
   deviceName_ = epicsStrDup( ttyName );
 
   // open interface
@@ -215,19 +274,8 @@ drvAsynRPiCan::drvAsynRPiCan( const char *portName, const char *ttyName, const i
              driverName, functionName, deviceName_, strerror( errno ) );
     return;
   }
-  
-  // set baudrate
-  if ( bitrate != DEFAULT_BITRATE ) {
-    int err;
-    TPBTR0BTR1 ratix = { bitrate, 0 };
-    err = ioctl( fd_, CAN_BITRATE, &ratix );
-    if ( err ) {
-      fprintf( stderr, "\033[31;1m %s:%s: Could not change bitrate for interface '%s'. %s \033[0m \n",
-               driverName, functionName, deviceName_, strerror( err ) );
-      return;
-    }
-  }
-  
+  bitrate_ = 125000;
+    
 }
 
 //******************************************************************************

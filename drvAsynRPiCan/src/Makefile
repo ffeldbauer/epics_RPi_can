@@ -14,6 +14,7 @@ drvAsynRPiCanSupport_SRCS += drvAsynIsegHvGlobal.cpp
 drvAsynRPiCanSupport_SRCS += drvAsynWienerVME.cpp
 drvAsynRPiCanSupport_SRCS += drvAsynTHMP.cpp
 drvAsynRPiCanSupport_SRCS += drvAsynLedPulser.cpp
+drvAsynRPiCanSupport_SRCS += drvAsynTmcm142.cpp
 drvAsynRPiCanSupport_SRCS += registerIOCfunctions.cpp
 drvAsynRPiCanSupport_LIBS += asyn
 drvAsynRPiCanSupport_LIBS += $(EPICS_BASE_IOC_LIBS)

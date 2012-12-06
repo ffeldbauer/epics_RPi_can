@@ -123,9 +123,6 @@ epicsFloat64 drvAsynLedPulser::getIntensity( epicsUInt8 high, epicsUInt8 low ){
 
 //------------------------------------------------------------------------------
 //! @brief   Called when asyn clients call pasynInt32->write().
-//!          Perform one of the following tasks: Switch all HV channels on / off
-//!                                              Switch all HV channels off w/o ramp (emergency off)
-//!                                              Clear the event status of the module
 //!
 //! @param   [in]  pasynUser  pasynUser structure that encodes the reason and address
 //!          [in]  value      Value to write

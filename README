@@ -29,5 +29,4 @@ Currently these AsynPortDrivers support
 
 To use the AsynPortDrivers you will need
 - EPICS base (http://www.aps.anl.gov/epics/)
-- SNL Sequncer (http://www-csr.bessy.de/control/SoftDist/sequencer/)
 - AsynDriver (http://www.aps.anl.gov/epics/modules/soft/asyn/)

@@ -37,23 +37,25 @@ extern int drvAsynRPiCanDebug;
 
 /* These are the drvInfo strings that are used to identify the parameters.
  * They are used by asyn clients, including standard asyn device support */
-#define P_GENERIC_String          "RPICAN_FRAME"        /* asynGenericPointer, r/w */
+//#define P_GENERIC_String          "RPICAN_FRAME"        /* asynGenericPointer, r/w */
 //#define P_BITRATE_String          "RPICAN_BITRATE"      /* asynOption, r/w */
 
 class drvAsynRPiCan : public asynPortDriver {
  public:
-  drvAsynRPiCan( const char *portName, const char *ttyName, const int bitrate );
+  drvAsynRPiCan( const char *portName, const char *ttyName );
 
   /* These are the methods that we override from asynPortDriver */
   virtual asynStatus readGenericPointer( asynUser *pasynUser, void *pointer );
   virtual asynStatus writeGenericPointer( asynUser *pasynUser, void *pointer );
+  virtual asynStatus readOption( asynUser *pasynUser, const char *key, char *value, int maxChars );
+  virtual asynStatus writeOption( asynUser *pasynUser, const char *key, const char *value );
 
  protected:
   /** Values used for pasynUser->reason, and indexes into the parameter library. */
-  int P_GENERIC;
-#define FIRST_RPICAN_COMMAND P_GENERIC
+  //  int P_GENERIC;
+  //#define FIRST_RPICAN_COMMAND P_GENERIC
   //  int P_BITRATE;
-#define LAST_RPICAN_COMMAND P_GENERIC
+  //#define LAST_RPICAN_COMMAND P_BITRATE
 
  private:
   int drvRPiCanWrite( can_frame_t *pframe, int timeout );
@@ -62,9 +64,10 @@ class drvAsynRPiCan : public asynPortDriver {
   /* Our data */
   char *deviceName_;
   int   fd_;
+  int   bitrate_;
 };
 
-#define NUM_RPICAN_PARAMS (&LAST_RPICAN_COMMAND - &FIRST_RPICAN_COMMAND + 1)
+//#define NUM_RPICAN_PARAMS (&LAST_RPICAN_COMMAND - &FIRST_RPICAN_COMMAND + 1)
 
 #endif
 

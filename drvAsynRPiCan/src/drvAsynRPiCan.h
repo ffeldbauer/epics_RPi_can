@@ -33,13 +33,19 @@
 //_____ D E F I N I T I O N S __________________________________________________
 typedef struct can_frame can_frame_t;
 
-extern int drvAsynRPiCanDebug;
-
 /* These are the drvInfo strings that are used to identify the parameters.
  * They are used by asyn clients, including standard asyn device support */
 //#define P_GENERIC_String          "RPICAN_FRAME"        /* asynGenericPointer, r/w */
 //#define P_BITRATE_String          "RPICAN_BITRATE"      /* asynOption, r/w */
 
+
+//! @brief   asynPortDriver for PANDA Raspberry Pi CAN interface
+//!
+//! This is a lower lever asynPortDriver for communication with
+//! the hardware CAN bus interface.\n
+//! It provides the asynGenericPointer interface to higher level
+//! asynPortDrivers.\n
+//! The genericPointers should be of type struct can_frame.
 class drvAsynRPiCan : public asynPortDriver {
  public:
   drvAsynRPiCan( const char *portName, const char *ttyName );

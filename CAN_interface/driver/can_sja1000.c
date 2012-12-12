@@ -310,6 +310,19 @@ void sja1000_release( struct candev* dev ) {
 }
 
 //------------------------------------------------------------------------------
+//! @fn      sja1000_read_bitrate
+//!
+//! @brief   get current bitrate
+//------------------------------------------------------------------------------
+u16 sja1000_read_bitrate( void ) {
+  u8 btr0 = can_gpio_readreg( TIMING0 );
+  u8 btr1 = can_gpio_readreg( TIMING1 );
+
+  u16 wBTR0BTR1 = ( btr0 << 8 ) | btr1;
+  return wBTR0BTR1;
+}
+
+//------------------------------------------------------------------------------
 //! @fn      sja1000_bitrate
 //!
 //! @brief   get BTR0BTR1 init values

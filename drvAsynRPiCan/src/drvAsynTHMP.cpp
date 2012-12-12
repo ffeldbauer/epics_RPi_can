@@ -62,9 +62,12 @@ static const char *driverName = "drvAsynTHMPDriver";
 //_____ F U N C T I O N S ______________________________________________________
 
 //------------------------------------------------------------------------------
-//! @brief   Background process to receive can frames from drvAsynRPiCan
+//! @brief   Background process to periodically poll for CAN frames from CanPort
 //!
-//! @param   [in]  drvPvt Pointer to class object
+//! @param   [in]  drvPvt Pointer to drvAsynTHMP class object
+//!
+//! @sa      drvAsynTHMP::readPoller
+//! @sa      drvAsynTHMP::drvAsynTHMP
 //------------------------------------------------------------------------------
 void THMPreadPoller( void *drvPvt ) {
   drvAsynTHMP *pPvt = (drvAsynTHMP *)drvPvt;
@@ -72,9 +75,15 @@ void THMPreadPoller( void *drvPvt ) {
 }
 
 //------------------------------------------------------------------------------
-//! @brief   Background process to receive CAN frames from drvAsynRPiCan
+//! @brief   Background process to periodically poll for CAN frames from CanPort
+//!
+//!          Periodically poll CanPort for 1 second for new CAN frames.
+//!          If a new frame is received and its id matches can_id_ the
+//!          corresponding parameter will be updated and the callback will be called
+//!
+//! @sa      drvAsynTHMP::drvAsynTHMP
 //------------------------------------------------------------------------------
-void drvAsynTHMP::readPoller( void ) {
+void drvAsynTHMP::readPoller() {
   asynStatus status;
   const char* functionName = "readPoller";
   can_frame_t *pframe = new can_frame_t;
@@ -86,7 +95,7 @@ void drvAsynTHMP::readPoller( void ) {
     if ( pframe->can_id != can_id_ )  continue;
     
     switch ( pframe->data[0] ) {
-
+      
     case 0x01: // ADC Conversion
       if ( pframe->can_dlc != 4 ) {
         fprintf( stderr, "\033[31;1m%s:%s:%s: invalid data length of frame for command 0x01: %d\033[0m\n", 
@@ -105,6 +114,7 @@ void drvAsynTHMP::readPoller( void ) {
         fprintf( stderr, "\033[31;1m%s:%s:%s: status=%d, function=%d, value=%d\033[0m\n", 
                  driverName, deviceName_, functionName, status, P_RawValue,
                  ( pframe->data[2] << 8 ) | ( pframe->data[3]) );
+      callParamCallbacks( pframe->data[1], pframe->data[1] );
       break;
       
     case 0x03: // I/O Board
@@ -126,7 +136,7 @@ void drvAsynTHMP::readPoller( void ) {
         fprintf( stderr, "\033[31;1m%s:%s:%s: status=%d, function=%d, value=%d\033[0m\n", 
                  driverName, deviceName_, functionName, status, P_IoBoard,
                  ( pframe->data[2] << 8 ) | ( pframe->data[3]) );
-      callParamCallbacks( pframe->data[1] );
+      callParamCallbacks( pframe->data[1], pframe->data[1] );
       break;
       
     case 0x04: // Serials
@@ -151,7 +161,7 @@ void drvAsynTHMP::readPoller( void ) {
         fprintf( stderr, "\033[31;1m%s:%s:%s: status=%d, function=%d, value=%d\033[0m\n", 
                  driverName, deviceName_, functionName, status, P_Serials,
                  ( pframe->data[2] << 8 ) | ( pframe->data[4]));
-      callParamCallbacks( pframe->data[1] );
+      callParamCallbacks( pframe->data[1], pframe->data[1] );
       break;
       
     case 0xff: // Firmware
@@ -168,7 +178,7 @@ void drvAsynTHMP::readPoller( void ) {
         fprintf( stderr, "\033[31;1m%s:%s:%s: status=%d, function=%d, value=%d\033[0m\n", 
                  driverName, deviceName_, functionName, status, P_Serials,
                  ( pframe->data[1] << 8 ) | ( pframe->data[2]) );
-      callParamCallbacks( 0 );
+      callParamCallbacks( 0, 0 );
       break;
       
     case 0xe0: // Error message
@@ -185,7 +195,7 @@ void drvAsynTHMP::readPoller( void ) {
         fprintf( stderr, "\033[31;1m%s:%s:%s: status=%d, function=%d, value=%d\033[0m\n", 
                  driverName, deviceName_, functionName, status, P_Error, 
                 ( pframe->data[1] << 8 ) | ( pframe->data[2]) );
-      callParamCallbacks( 0 );
+      callParamCallbacks( 0, 0 );
       break;
     }
   }
@@ -193,10 +203,15 @@ void drvAsynTHMP::readPoller( void ) {
 
 //------------------------------------------------------------------------------
 //! @brief   Called when asyn clients call pasynInt32->write().
-//!          Trigger read out raw value/IO value/serials
+//!
+//!          Trigger read out raw values, IO values, and serials, respectively
 //!
 //! @param   [in]  pasynUser  pasynUser structure that encodes the reason and address
-//!          [in]  value      Value to write
+//! @param   [in]  value      Value to write
+//!
+//! @return  in case of no error occured asynSuccess is returned. Otherwise
+//!          asynError or asynTimeout is returned. A error message is stored
+//!          in pasynUser->errorMessage.
 //------------------------------------------------------------------------------
  asynStatus drvAsynTHMP::writeInt32( asynUser *pasynUser, epicsInt32 value ) {
   int function = pasynUser->reason;
@@ -207,7 +222,6 @@ void drvAsynTHMP::readPoller( void ) {
   if ( function == P_RawValue ) return asynSuccess;
 
   status = getAddress( pasynUser, &addr ); if ( status != asynSuccess ) return status;
-  status = (asynStatus) setIntegerParam( addr, function, value );
   
   can_frame_t *pframe = new can_frame_t;
   pframe->can_id = can_id_;
@@ -247,16 +261,20 @@ void drvAsynTHMP::readPoller( void ) {
 
 //------------------------------------------------------------------------------
 //! @brief   Called when asyn clients call pasynUInt32Digital->write().
-//!          Set up new value for IO board
+//!
+//!          If pasynUser->reason is equal to P_IoBoard the settings of
+//!          the corresponding I/O piggyback board are updated
 //!
 //! @param   [in]  pasynUser  pasynUser structure that encodes the reason and address
-//!          [in]  value      Value to write
-//!          [in]  mask       Mask value to use when reading the value.
+//! @param   [in]  value      Value to write
+//! @param   [in]  mask       Mask value to use when reading the value.
+//!
+//! @return  in case of no error occured asynSuccess is returned. Otherwise
+//!          asynError or asynTimeout is returned. A error message is stored
+//!          in pasynUser->errorMessage.
 //------------------------------------------------------------------------------
 asynStatus drvAsynTHMP::writeUInt32Digital( asynUser *pasynUser, epicsUInt32 value, epicsUInt32 mask ) {
   int function = pasynUser->reason;
-  if ( function != P_IoBoard ) return asynSuccess;
-
   int addr = 0;
   asynStatus status = asynSuccess;
   const char* functionName = "writeUInt32Digital";
@@ -299,10 +317,10 @@ asynStatus drvAsynTHMP::writeUInt32Digital( asynUser *pasynUser, epicsUInt32 val
 //!          Calls constructor for the asynPortDriver base class.
 //!
 //! @param   [in]  portName    The name of the asyn port driver to be created.
-//!          [in]  RPiCanPort  The name of the interface 
-//!          [in]  can_id      The CAN id of this THMP
+//! @param   [in]  CanPort     The name of the asynPortDriver of the CAN bus interface 
+//! @param   [in]  can_id      The CAN id of this THMP
 //------------------------------------------------------------------------------
-drvAsynTHMP::drvAsynTHMP( const char *portName, const char *RPiCanPort,
+drvAsynTHMP::drvAsynTHMP( const char *portName, const char *CanPort,
                           const int can_id ) 
   : asynPortDriver( portName, 
                     64, /* maxAddr */ 
@@ -332,10 +350,10 @@ drvAsynTHMP::drvAsynTHMP( const char *portName, const char *RPiCanPort,
   can_id_      = can_id;
   
   /* Connect to asyn generic pointer port with asynGenericPointerSyncIO */
-  status = pasynGenericPointerSyncIO->connect( RPiCanPort, 0, &pAsynUserGenericPointer_, 0 );
+  status = pasynGenericPointerSyncIO->connect( CanPort, 0, &pAsynUserGenericPointer_, 0 );
   if ( status != asynSuccess ) {
     fprintf( stderr, "\033[31;1m%s:%s:%s: can't connect to asynGenericPointer on port '%s'\033[0m\n", 
-             driverName, deviceName_, functionName, RPiCanPort );
+             driverName, deviceName_, functionName, CanPort );
     return;
   }
 

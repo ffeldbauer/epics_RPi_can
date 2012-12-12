@@ -124,8 +124,16 @@ epicsFloat64 drvAsynLedPulser::getIntensity( epicsUInt8 high, epicsUInt8 low ){
 //------------------------------------------------------------------------------
 //! @brief   Called when asyn clients call pasynInt32->write().
 //!
+//!          If pasynUser->reason is equal to
+//!          - P_write the values of the other parameters are send to the light pulser
+//!          - P_read  the values of the other parameters are read from the light pulser
+//
 //! @param   [in]  pasynUser  pasynUser structure that encodes the reason and address
-//!          [in]  value      Value to write
+//! @param   [in]  value      Value to write
+//!
+//! @return  in case of no error occured asynSuccess is returned. Otherwise
+//!          asynError or asynTimeout is returned. A error message is stored
+//!          in pasynUser->errorMessage.
 //------------------------------------------------------------------------------
 asynStatus drvAsynLedPulser::writeInt32( asynUser *pasynUser, epicsInt32 value ) {
   int function = pasynUser->reason;
@@ -214,11 +222,12 @@ asynStatus drvAsynLedPulser::writeInt32( asynUser *pasynUser, epicsInt32 value )
 //! @brief   Constructor for the drvAsynLedPulser class.
 //!          Calls constructor for the asynPortDriver base class.
 //!
-//! @param   [in]  portName    The name of the asyn port driver to be created.
-//!          [in]  RPiCanPort  The name of the interface 
-//!          [in]  can_id      The can id of the led pulser
+//! @param   [in]  portName    The name of the asynPortDriver to be created.
+//! @param   [in]  CanPort     The name of the asynPortDriver of the CAN bus interface 
+//! @param   [in]  can_id      The can id of the light pulser
+//! @param   [in]  filename    Name of the file containing calibration data for LCD
 //------------------------------------------------------------------------------
-drvAsynLedPulser::drvAsynLedPulser( const char *portName, const char *RPiCanPort,
+drvAsynLedPulser::drvAsynLedPulser( const char *portName, const char *CanPort,
                                     const int can_id, const char *filename ) 
   : asynPortDriver( portName, 
                     0, /* maxAddr */ 
@@ -288,10 +297,10 @@ drvAsynLedPulser::drvAsynLedPulser( const char *portName, const char *RPiCanPort
   createParam( P_LEDPULSER_READ_STRING,      asynParamInt32,         &P_read );
 
   /* Connect to asyn generic pointer port with asynGenericPointerSyncIO */
-  status = pasynGenericPointerSyncIO->connect( RPiCanPort, 0, &pAsynUserGenericPointer_, 0 );
+  status = pasynGenericPointerSyncIO->connect( CanPort, 0, &pAsynUserGenericPointer_, 0 );
   if ( status != asynSuccess ) {
     fprintf( stderr, "\033[31;1m%s:%s:%s: can't connect to asynGenericPointer on port '%s'\033[0m\n", 
-             driverName, deviceName_, functionName, RPiCanPort );
+             driverName, deviceName_, functionName, CanPort );
     return;
   }
   

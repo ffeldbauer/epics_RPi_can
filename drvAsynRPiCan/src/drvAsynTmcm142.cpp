@@ -18,7 +18,6 @@
 //! @author  F. Feldbauer <florian@ep1.ruhr-uni-bochum.de>
 //!
 //! @brief   Asyn driver for TMCM142 1-axis stepper controller/driver
-//!          using the RPi Can interface
 //!
 //! @version 1.0.0; Nov. 27, 2012
 //******************************************************************************
@@ -58,6 +57,7 @@
 
 typedef struct can_frame can_frame_t;
 
+//! helper to split the 32-bit integer value from the records into 4 unsigned chars
 typedef union{
   epicsInt32 val32;
   epicsUInt8 val8[4];
@@ -74,7 +74,11 @@ static const char *driverName = "drvAsynTMCM142Driver";
 //! @brief   Called when asyn clients call pasynInt32->read().
 //!
 //! @param   [in]  pasynUser  pasynUser structure that encodes the reason and address
-//!          [out] value      Address of the value to read
+//! @param   [out] value      Address of the value to read
+//!
+//! @return  in case of no error occured asynSuccess is returned. Otherwise
+//!          asynError or asynTimeout is returned. A error message is stored
+//!          in pasynUser->errorMessage.
 //------------------------------------------------------------------------------
 asynStatus drvAsynTmcm142::readInt32( asynUser *pasynUser, epicsInt32 *value ) {
   int function = pasynUser->reason;
@@ -84,30 +88,50 @@ asynStatus drvAsynTmcm142::readInt32( asynUser *pasynUser, epicsInt32 *value ) {
     
   status = getAddress( pasynUser, &addr ); if( status ) return status;
 
-  std::map<int, epicsUInt8>::const_iterator it = cmds_.find( function );
+  if ( function == P_STATUS ) {
+    status = (asynStatus) getIntegerParam( addr, function, value );
+    if( status ) 
+      epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
+                     "%s:%s: status=%d, function=%d, value=%d", 
+                     driverName, functionName, status, function, *value );
+    else        
+      asynPrint( pasynUser, ASYN_TRACEIO_DEVICE, 
+                 "%s:%s: function=%d, value=%d\n", 
+                 driverName, functionName, function, *value );
+    return status;
+  }
+
+  std::map<int, epicsUInt8>::const_iterator it = cmds_r_.find( function );
   if( it == cmds_.end() ) return asynError;
   
   can_frame_t *pframe = new can_frame_t;
   pframe->can_id = can_id_w_;
   pframe->can_dlc = 7;
-  pframe->data[0] = it->second;
-  pframe->data[1] = addr;
-  pframe->data[2] = 0;
+  pframe->data[0] = it->second;      // Command number
+  pframe->data[1] = addr;            // Type
+  pframe->data[2] = 0;               // Motor/Bank address
   pframe->data[3] = 0;
   pframe->data[4] = 0;
   pframe->data[5] = 0;
   pframe->data[6] = 0;
 
   status = pasynGenericPointerSyncIO->writeRead( pAsynUserGenericPointer_, pframe, pframe, pasynUser->timeout );
-  if ( status ){
+  if ( asynTimeout == status ){
     epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "\033[31;1m%s:%s:%s: status=%d, function=%d, No reply from device within %f s\033[0m", 
+                   "%s:%s:%s: status=%d, function=%d, No reply from device within %f s", 
                    driverName, deviceName_, functionName, status, function, pasynUser->timeout );
     return asynTimeout;
   }
+  if ( status ){
+    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
+                   "%s:%s:%s: status=%d, function=%d %s", 
+                   driverName, deviceName_, functionName, status, function,
+                   pAsynUserGenericPointer_->errorMessage );
+    return asynError;
+  }
   if ( ( pframe->can_id  != can_id_r_ ) ||
        ( pframe->can_dlc != 7 ) ||
-       ( pframe->data[0] != 2 ) ||
+       ( pframe->data[0] != 2 ) || // ??
        ( pframe->data[2] != it->second ) 
        ){
     epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
@@ -117,22 +141,18 @@ asynStatus drvAsynTmcm142::readInt32( asynUser *pasynUser, epicsInt32 *value ) {
                    can_id_r_, 2, it->second );
     return asynError;
   }
-  /* Set the parameter in the parameter library. */
+  // Update status
   status = (asynStatus) setIntegerParam( 0, P_STATUS, pframe->data[1] );
-  /* Do callbacks so higher layers see any changes */
   status = (asynStatus) callParamCallbacks( 0, 0 );
-  if ( pframe->data[1] < 100 ) {  
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "\033[31;1m%s:%s:%s: function=%d, Status code has an error\033[0m", 
-                   driverName, deviceName_, functionName, function );
-    return asynError;
-  }
+
+  //  epicsInt32 myValue = *(epicsInt32*)&preadframe->data[3];
   split_t myValue;
   myValue.val8[3] = pframe->data[3];
   myValue.val8[2] = pframe->data[4];
   myValue.val8[1] = pframe->data[5];
   myValue.val8[0] = pframe->data[6];
   
+  // update value of parameter
   status = (asynStatus) setIntegerParam( addr, function, myValue.val32 );
   status = (asynStatus) getIntegerParam( addr, function, value );
   if( status ) 
@@ -140,7 +160,7 @@ asynStatus drvAsynTmcm142::readInt32( asynUser *pasynUser, epicsInt32 *value ) {
                    "%s:%s: status=%d, function=%d, value=%d", 
                    driverName, functionName, status, function, *value );
   else        
-    asynPrint( pasynUser, ASYN_TRACEIO_DRIVER, 
+    asynPrint( pasynUser, ASYN_TRACEIO_DEVICE, 
                "%s:%s: function=%d, value=%d\n", 
                driverName, functionName, function, *value );
   return status;
@@ -150,7 +170,11 @@ asynStatus drvAsynTmcm142::readInt32( asynUser *pasynUser, epicsInt32 *value ) {
 //! @brief   Called when asyn clients call pasynInt32->write().
 //!
 //! @param   [in]  pasynUser  pasynUser structure that encodes the reason and address
-//!          [in]  value      Value to write
+//! @param   [in]  value      Value to write
+//!
+//! @return  in case of no error occured asynSuccess is returned. Otherwise
+//!          asynError or asynTimeout is returned. A error message is stored
+//!          in pasynUser->errorMessage.
 //------------------------------------------------------------------------------
 asynStatus drvAsynTmcm142::writeInt32( asynUser *pasynUser, epicsInt32 value ) {
   int function = pasynUser->reason;
@@ -160,7 +184,7 @@ asynStatus drvAsynTmcm142::writeInt32( asynUser *pasynUser, epicsInt32 value ) {
 
   status = getAddress( pasynUser, &addr ); if( status != asynSuccess ) return status;
 
-  std::map<int, epicsUInt8>::const_iterator it = cmds_.find( function );
+  std::map<int, epicsUInt8>::const_iterator it = cmds_w_.find( function );
   if( it == cmds_.end() ) return asynError;
   
   split_t myValue; myValue.val32 = value;
@@ -170,21 +194,29 @@ asynStatus drvAsynTmcm142::writeInt32( asynUser *pasynUser, epicsInt32 value ) {
   pframe->data[0] = it->second;      // Command number
   pframe->data[1] = addr;            // Type
   pframe->data[2] = 0;               // Motor/Bank address
+  // *(epicsUInt32*)&pframe->data[3] = value;
   pframe->data[3] = myValue.val8[3];
   pframe->data[4] = myValue.val8[2];
   pframe->data[5] = myValue.val8[1];
   pframe->data[6] = myValue.val8[0];
 
   status = pasynGenericPointerSyncIO->writeRead( pAsynUserGenericPointer_, pframe, pframe, pasynUser->timeout );
-  if ( status ){
+  if ( asynTimeout == status ){
     epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "\033[31;1m%s:%s:%s: status=%d, function=%d, No reply from device within %f s\033[0m", 
+                   "%s:%s:%s: status=%d, function=%d, No reply from device within %f s", 
                    driverName, deviceName_, functionName, status, function, pasynUser->timeout );
     return asynTimeout;
   }
+  if ( status ){
+    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
+                   "%s:%s:%s: status=%d, function=%d %s", 
+                   driverName, deviceName_, functionName, status, function,
+                   pAsynUserGenericPointer_->errorMessage );
+    return asynError;
+  }
   if ( ( pframe->can_id  != can_id_r_ ) ||
        ( pframe->can_dlc != 7 ) ||
-       ( pframe->data[0] != 2 ) ||
+       ( pframe->data[0] != 2 ) || // ??
        ( pframe->data[2] != it->second ) 
        ){
     epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
@@ -194,21 +226,12 @@ asynStatus drvAsynTmcm142::writeInt32( asynUser *pasynUser, epicsInt32 value ) {
                    can_id_r_, 2, it->second );
     return asynError;
   }
-  /* Set the parameter in the parameter library. */
+  // update status
   status = (asynStatus) setIntegerParam( 0, P_STATUS, pframe->data[1] );
-  /* Do callbacks so higher layers see any changes */
   status = (asynStatus) callParamCallbacks( 0, 0 );
-  if ( pframe->data[1] < 100 ) {  
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "\033[31;1m%s:%s:%s: function=%d, Status code has an error\033[0m", 
-                   driverName, deviceName_, functionName, function );
-    return asynError;
-  }
-  
-  /* Set the parameter in the parameter library. */
-  status = (asynStatus)setIntegerParam( addr, function, value );
 
-  /* Do callbacks so higher layers see any changes */
+  // update value of parameter
+  status = (asynStatus)setIntegerParam( addr, function, value );
   status = (asynStatus) callParamCallbacks( addr, addr );
     
   if( status ) 
@@ -216,7 +239,7 @@ asynStatus drvAsynTmcm142::writeInt32( asynUser *pasynUser, epicsInt32 value ) {
                    "%s:%s:%s: status=%d, function=%d, value=%d", 
                    driverName, deviceName_, functionName, status, function, value );
   else        
-    asynPrint( pasynUser, ASYN_TRACEIO_DRIVER, 
+    asynPrint( pasynUser, ASYN_TRACEIO_DEVICE, 
                "%s:%s: function=%d, value=%d\n", 
                driverName, functionName, function, value );
 
@@ -227,18 +250,18 @@ asynStatus drvAsynTmcm142::writeInt32( asynUser *pasynUser, epicsInt32 value ) {
 //! @brief   Constructor for the drvAsynTmcm142 class.
 //!          Calls constructor for the asynPortDriver base class.
 //!
-//! @param   [in]  portName    The name of the asyn port driver to be created.
-//!          [in]  RPiCanPort  The name of the interface 
-//!          [in]  can_id_w    The can id of the TMCM142 driver
-//!          [in]  can_id_r    The can reply id of the TMCM142 driver
+//! @param   [in]  portName    The name of the asynPortDriver to be created.
+//! @param   [in]  CanPort     The name of the asynPortDriver of the CAN bus interface 
+//! @param   [in]  can_id_w    The can id of the TMCM142 driver
+//! @param   [in]  can_id_r    The can reply id of the TMCM142 driver
 //------------------------------------------------------------------------------
-drvAsynTmcm142::drvAsynTmcm142( const char *portName, const char *RPiCanPort,
+drvAsynTmcm142::drvAsynTmcm142( const char *portName, const char *CanPort,
                                 const int can_id_w, const int can_id_r ) 
   : asynPortDriver( portName, 
                     256, /* maxAddr */ 
                     NUM_TMCM142_PARAMS,
-                    asynCommonMask | asynInt32Mask | asynDrvUserMask, /* Interface mask */
-                    asynCommonMask | asynInt32Mask,  /* Interrupt mask */
+                    asynCommonMask | asynInt32Mask | asynUInt32Digital | asynDrvUserMask, /* Interface mask */
+                    asynCommonMask | asynInt32Mask | asynUInt32Digital,  /* Interrupt mask */
                     ASYN_CANBLOCK | ASYN_MULTIDEVICE, /* asynFlags. */
                     1, /* Autoconnect */
                     0, /* Default priority */
@@ -251,16 +274,10 @@ drvAsynTmcm142::drvAsynTmcm142( const char *portName, const char *RPiCanPort,
   can_id_w_    = can_id_w;
   can_id_r_    = can_id_r;
   
-  // Create parameters
   createParam( P_TMCM142_ROR_STRING,    asynParamInt32,         &P_ROR );
   createParam( P_TMCM142_ROL_STRING,    asynParamInt32,         &P_ROL );
-  createParam( P_TMCM142_MVP_STRING,    asynParamInt32,         &P_MVP );
   createParam( P_TMCM142_MST_STRING,    asynParamInt32,         &P_MST );
-  createParam( P_TMCM142_RFS_STRING,    asynParamInt32,         &P_RFS );
-  createParam( P_TMCM142_SCO_STRING,    asynParamInt32,         &P_SCO );
-  createParam( P_TMCM142_CCO_STRING,    asynParamInt32,         &P_CCO );
-  createParam( P_TMCM142_GCO_STRING,    asynParamInt32,         &P_GCO );
-
+  createParam( P_TMCM142_MVP_STRING,    asynParamInt32,         &P_MVP );
   createParam( P_TMCM142_SAP_STRING,    asynParamInt32,         &P_SAP );
   createParam( P_TMCM142_GAP_STRING,    asynParamInt32,         &P_GAP );
   createParam( P_TMCM142_STAP_STRING,   asynParamInt32,         &P_STAP );
@@ -269,68 +286,68 @@ drvAsynTmcm142::drvAsynTmcm142( const char *portName, const char *RPiCanPort,
   createParam( P_TMCM142_GGP_STRING,    asynParamInt32,         &P_GGP );
   createParam( P_TMCM142_STGP_STRING,   asynParamInt32,         &P_STGP );
   createParam( P_TMCM142_RSGP_STRING,   asynParamInt32,         &P_RSGP );
-
+  createParam( P_TMCM142_RFS_STRING,    asynParamInt32,         &P_RFS );
   createParam( P_TMCM142_SIO_STRING,    asynParamInt32,         &P_SIO );
   createParam( P_TMCM142_GIO_STRING,    asynParamInt32,         &P_GIO );
-
-  createParam( P_TMCM142_JA_STRING,     asynParamInt32,         &P_JA );
-  createParam( P_TMCM142_JC_STRING,     asynParamInt32,         &P_JC );
+  createParam( P_TMCM142_CALC_STRING,   asynParamInt32,         &P_CALC );
   createParam( P_TMCM142_COMP_STRING,   asynParamInt32,         &P_COMP );
-  createParam( P_TMCM142_CLE_STRING,    asynParamInt32,         &P_CLE );
+  createParam( P_TMCM142_JC_STRING,     asynParamInt32,         &P_JC );
+  createParam( P_TMCM142_JA_STRING,     asynParamInt32,         &P_JA );
   createParam( P_TMCM142_CSUB_STRING,   asynParamInt32,         &P_CSUB );
   createParam( P_TMCM142_RSUB_STRING,   asynParamInt32,         &P_RSUB );
   createParam( P_TMCM142_WAIT_STRING,   asynParamInt32,         &P_WAIT );
   createParam( P_TMCM142_STOP_STRING,   asynParamInt32,         &P_STOP );
-
-  createParam( P_TMCM142_CALC_STRING,   asynParamInt32,         &P_CALC );
+  createParam( P_TMCM142_SCO_STRING,    asynParamInt32,         &P_SCO );
+  createParam( P_TMCM142_CCO_STRING,    asynParamInt32,         &P_CCO );
+  createParam( P_TMCM142_GCO_STRING,    asynParamInt32,         &P_GCO );
   createParam( P_TMCM142_CALCX_STRING,  asynParamInt32,         &P_CALCX );
   createParam( P_TMCM142_AAP_STRING,    asynParamInt32,         &P_AAP );
   createParam( P_TMCM142_AGP_STRING,    asynParamInt32,         &P_AGP );
+  createParam( P_TMCM142_CLE_STRING,    asynParamInt32,         &P_CLE );
   createParam( P_TMCM142_ACO_STRING,    asynParamInt32,         &P_ACO );
 
   createParam( P_TMCM142_STATUS_STRING, asynParamInt32,         &P_STATUS );
 
-  cmds_.insert( std::make_pair( P_ROR, 1 ) );
-  cmds_.insert( std::make_pair( P_ROL, 2 ) );
-  cmds_.insert( std::make_pair( P_MVP, 4 ) );
-  cmds_.insert( std::make_pair( P_MST, 3 ) );
-  cmds_.insert( std::make_pair( P_RFS, 13 ) );
-  cmds_.insert( std::make_pair( P_SCO, 30 ) );
-  cmds_.insert( std::make_pair( P_CCO, 32 ) );
-  cmds_.insert( std::make_pair( P_GCO, 31 ) );
-  cmds_.insert( std::make_pair( P_SAP, 5 ) );
-  cmds_.insert( std::make_pair( P_GAP, 6 ) );
-  cmds_.insert( std::make_pair( P_STAP, 7 ) );
-  cmds_.insert( std::make_pair( P_RSAP, 8 ) );
-  cmds_.insert( std::make_pair( P_SGP, 9 ) );
-  cmds_.insert( std::make_pair( P_GGP, 10 ) );
-  cmds_.insert( std::make_pair( P_STGP, 11 ) );
-  cmds_.insert( std::make_pair( P_RSGP, 12 ) );
-  cmds_.insert( std::make_pair( P_SIO, 14 ) );
-  cmds_.insert( std::make_pair( P_GIO, 15 ) );
-  cmds_.insert( std::make_pair( P_JA, 22 ) );
-  cmds_.insert( std::make_pair( P_JC, 21 ) );
-  cmds_.insert( std::make_pair( P_COMP, 20 ) );
-  cmds_.insert( std::make_pair( P_CLE, 36 ) );
-  cmds_.insert( std::make_pair( P_CSUB, 23 ) );
-  cmds_.insert( std::make_pair( P_RSUB, 24 ) );
-  cmds_.insert( std::make_pair( P_WAIT, 27 ) );
-  cmds_.insert( std::make_pair( P_STOP, 28 ) );
-  cmds_.insert( std::make_pair( P_CALC, 19 ) );
-  cmds_.insert( std::make_pair( P_CALCX, 33 ) );
-  cmds_.insert( std::make_pair( P_AAP, 34 ) );
-  cmds_.insert( std::make_pair( P_AGP, 35 ) );
-  cmds_.insert( std::make_pair( P_ACO, 39 ) );
+
+  cmds_w_.insert( std::make_pair( P_ROR, 1 ) );
+  cmds_w_.insert( std::make_pair( P_ROL, 2 ) );
+  cmds_w_.insert( std::make_pair( P_MST, 3 ) );
+  cmds_w_.insert( std::make_pair( P_MVP, 4 ) );
+  cmds_w_.insert( std::make_pair( P_SAP, 5 ) );
+  cmds_r_.insert( std::make_pair( P_GAP, 6 ) );
+  cmds_w_.insert( std::make_pair( P_STAP, 7 ) );
+  cmds_w_.insert( std::make_pair( P_RSAP, 8 ) );
+  cmds_w_.insert( std::make_pair( P_SGP, 9 ) );
+  cmds_r_.insert( std::make_pair( P_GGP, 10 ) );
+  cmds_w_.insert( std::make_pair( P_STGP, 11 ) );
+  cmds_w_.insert( std::make_pair( P_RSGP, 12 ) );
+  cmds_w_.insert( std::make_pair( P_RFS, 13 ) );
+  cmds_w_.insert( std::make_pair( P_SIO, 14 ) );
+  cmds_r_.insert( std::make_pair( P_GIO, 15 ) );
+  cmds_w_.insert( std::make_pair( P_CALC, 19 ) );
+  cmds_w_.insert( std::make_pair( P_COMP, 20 ) );
+  cmds_w_.insert( std::make_pair( P_JC, 21 ) );
+  cmds_w_.insert( std::make_pair( P_JA, 22 ) );
+  cmds_w_.insert( std::make_pair( P_CSUB, 23 ) );
+  cmds_w_.insert( std::make_pair( P_RSUB, 24 ) );
+  cmds_w_.insert( std::make_pair( P_WAIT, 27 ) );
+  cmds_w_.insert( std::make_pair( P_STOP, 28 ) );
+  cmds_w_.insert( std::make_pair( P_SCO, 30 ) );
+  cmds_r_.insert( std::make_pair( P_GCO, 31 ) );
+  cmds_w_.insert( std::make_pair( P_CCO, 32 ) );
+  cmds_w_.insert( std::make_pair( P_CALCX, 33 ) );
+  cmds_w_.insert( std::make_pair( P_AAP, 34 ) );
+  cmds_w_.insert( std::make_pair( P_AGP, 35 ) );
+  cmds_w_.insert( std::make_pair( P_CLE, 36 ) );
+  cmds_w_.insert( std::make_pair( P_ACO, 39 ) );
 
   /* Connect to asyn generic pointer port with asynGenericPointerSyncIO */
-  status = pasynGenericPointerSyncIO->connect( RPiCanPort, 0, &pAsynUserGenericPointer_, 0 );
+  status = pasynGenericPointerSyncIO->connect( CanPort, 0, &pAsynUserGenericPointer_, 0 );
   if ( status != asynSuccess ) {
     fprintf( stderr, "\033[31;1m%s:%s:%s: can't connect to asynGenericPointer on port '%s'\033[0m\n", 
-             driverName, deviceName_, functionName, RPiCanPort );
+             driverName, deviceName_, functionName, CanPort );
     return;
   }
- 
-
 }
 
 /* Configuration routines.  Called directly, or from the iocsh function below */

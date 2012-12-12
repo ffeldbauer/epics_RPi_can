@@ -41,7 +41,6 @@
 #include <iocsh.h>
 
 /* local includes */
-#include "drvAsynRPiCanDebug.h"
 #include "drvAsynRPiCan.h"
 #include "drvAsynIsegHv.h"
 #include "drvAsynIsegHvGlobal.h"
@@ -52,7 +51,6 @@
 //_____ D E F I N I T I O N S __________________________________________________
 
 //_____ G L O B A L S __________________________________________________________
-int drvAsynRPiCanDebug = 0;
 
 //_____ L O C A L S ____________________________________________________________
 
@@ -216,5 +214,4 @@ extern "C" {
   }
   
   epicsExportRegistrar( drvAsynRPiCanRegister );
-  epicsExportAddress( int, drvAsynRPiCanDebug );
 }

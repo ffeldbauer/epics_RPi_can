@@ -297,11 +297,8 @@
     at your site. Therefore you have to follow these steps:</p>
   <ol>
     <li>Download and build EPICS base (3.14.12.2 or newer): <a href="http://www.aps.anl.gov/epics/" target="new">http://www.aps.anl.gov/epics/</a></li>
-    <li>Download the AsynDriver module (4-20 or newer): <a target="new" href="http://www.aps.anl.gov/epics/modules/soft/asyn/">http://www.aps.anl.gov/epics/modules/soft/asyn/</a><br />
-      Version 4.20 has a Bug in the devAsynUInt32Digital device support interrupt routine causing EPICS to suspend
-      the AsynPortDriver. Also in version 4.20 are implementations needed by this Drivers missing.
-      The patch file <tt>fix_asyn-4.20.patch</tt> contains a fix for the bug and the missing implementations.</li>
-    <li>Apply the <tt>drvAsynRPiCan.patch</tt> contained in this package to the AsynDriver module<br />
+    <li>Download the AsynDriver module (4-21 or newer): <a target="new" href="http://www.aps.anl.gov/epics/modules/soft/asyn/">http://www.aps.anl.gov/epics/modules/soft/asyn/</a></li>
+    <li>Apply the <tt>drvAsynRPiCan.patch</tt> patch file contained in this package to the AsynDriver module<br />
     and copy the directory <tt>drvAsynRPiCan</tt> into the AsynDriver top directory</li>
     <li>Build the AsynDriver module</li>
   </ol>

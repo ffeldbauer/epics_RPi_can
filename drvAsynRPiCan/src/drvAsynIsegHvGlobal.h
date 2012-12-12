@@ -35,9 +35,17 @@
 #define P_ISEGHV_EMO_STRING                "ISEGHV_EMERGENCYOFF"        /* asynInt32,          w   */
 #define P_ISEGHV_SWITCH_STRING             "ISEGHV_SWITCHONOFF"         /* asynInt32,          w   */
 
+//! @brief   asynPortDriver for ISEG EDS/EHS high voltage modules
+//!
+//! This asynPortDriver is a higher level driver used as device support for the
+//! EDS/EHS high voltage modules of ISEG Spezialelektronik GmbH.\n
+//! It provides two parameters to switch all high voltage channels connected to
+//! the CAN bus on and off, respectively.\n
+//! It needs a lower level driver with a asynGenericPointer interface for
+//! accessing the hardware of the CAN bus interface.
 class drvAsynIsegHvGlobal : public asynPortDriver {
  public:
-  drvAsynIsegHvGlobal( const char *portName, const char *RPiCanPort );
+  drvAsynIsegHvGlobal( const char *portName, const char *CanPort );
 
   /* These are the methods that we override from asynPortDriver */
   virtual asynStatus writeInt32( asynUser *pasynUser, epicsInt32 value );
@@ -45,14 +53,14 @@ class drvAsynIsegHvGlobal : public asynPortDriver {
 
  protected:
   /** Values used for pasynUser->reason, and indexes into the parameter library. */
-  int P_EmergencyOff;
+
+  int P_EmergencyOff;      //!< index of Parameter "ISEGHV_EMERGENCYOFF"
 #define FIRST_ISEGHVGLOBAL_COMMAND P_EmergencyOff
-  int P_SwitchOnOff;
+  int P_SwitchOnOff;       //!< index of Parameter "ISEGHV_SWITCHONOFF"
 #define LAST_ISEGHVGLOBAL_COMMAND P_SwitchOnOff
 
  private:
   char           *deviceName_;
-  char           *RPiCanPort_;
   asynUser       *pAsynUserGenericPointer_;
 };
 

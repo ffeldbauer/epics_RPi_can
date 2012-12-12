@@ -127,7 +127,7 @@ static int can_open( struct inode *inode, struct file *filep ) {
     err = can_fifo_reset( &dev->readFifo );
     if (err)
       return err;
-    
+
     err = can_gpio_req_irq( dev );
     if (err) {
       printk( KERN_ERR "%s: Cannot request irq %d! Error: %d\n", DEVICE_NAME, dev->wIrq, err );
@@ -165,11 +165,11 @@ static int can_release( struct inode *inode, struct file *filep ) {
     if ( dev->nOpenPaths > 1 )
       dev->nOpenPaths--;
     else {
-      
+
       wait_until_fifo_empty( MAX_WAIT_UNTIL_CLOSE );
       // release the device itself
       sja1000_release( dev );
-      
+
       // release the interface depended irq, after this 'dev' is not valid
       can_gpio_free_irq( dev );
     }
@@ -558,7 +558,7 @@ static int can_ioctl_diag(struct candev *dev, TPDIAG *diag) {
 }
 
 //------------------------------------------------------------------------------
-//! @fn      can_ioctl_write
+//! @fn      can_ioctl_BTR0BTR1
 //!
 //! @brief   File Operations: is called on user ioctl() call
 //!                           with cmd = CAN_BITRATE
@@ -582,6 +582,39 @@ static int can_ioctl_BTR0BTR1(struct candev *dev, TPBTR0BTR1 *BTR0BTR1) {
     return err;
   }
   err = sja1000_open( dev, local.wBTR0BTR1 );
+
+  return err;
+}
+
+//------------------------------------------------------------------------------
+//! @fn      can_ioctl_get_BTR0BTR1
+//!
+//! @brief   File Operations: is called on user ioctl() call
+//!                           with cmd = CAN_GET_BITRATE
+//!          get current bitrate
+//!
+//! @return:
+//------------------------------------------------------------------------------
+static int can_ioctl_get_BTR0BTR1( struct candev *dev, TPBTR0BTR1 *BTR0BTR1 ) {
+  int err = 0;
+  TPBTR0BTR1 local;
+
+  local.dwBitRate = sja1000_read_bitrate();
+  switch ( local.dwBitRate ) {
+  case   CAN_BAUD_1M: local.wBTR0BTR1 = 1000000; break;
+  case CAN_BAUD_500K: local.wBTR0BTR1 =  500000; break;
+  case CAN_BAUD_250K: local.wBTR0BTR1 =  250000; break;
+  case CAN_BAUD_125K: local.wBTR0BTR1 =  125000; break;
+  case CAN_BAUD_100K: local.wBTR0BTR1 =  100000; break;
+  case  CAN_BAUD_50K: local.wBTR0BTR1 =   50000; break;
+  case  CAN_BAUD_20K: local.wBTR0BTR1 =   20000; break;
+  case  CAN_BAUD_10K: local.wBTR0BTR1 =   10000; break;
+  case   CAN_BAUD_5K: local.wBTR0BTR1 =    5000; break;
+  }
+
+  if (copy_to_user(BTR0BTR1, &local, sizeof(local))) {
+    err = -EFAULT;
+  }
 
   return err;
 }

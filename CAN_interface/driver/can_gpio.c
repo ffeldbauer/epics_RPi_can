@@ -41,30 +41,59 @@
 //_____ G L O B A L S __________________________________________________________
 
 //_____ L O C A L S ____________________________________________________________
-static struct gpio ADi[8] = {
-  {  7, GPIOF_OUT_INIT_LOW, "AD0" }, /* default to OFF */
-  {  8, GPIOF_OUT_INIT_LOW, "AD1" }, /* default to OFF */
-  {  9, GPIOF_OUT_INIT_LOW, "AD2" }, /* default to OFF */
-  { 21, GPIOF_OUT_INIT_LOW, "AD3" }, /* default to OFF */
-  { 22, GPIOF_OUT_INIT_LOW, "AD4" }, /* default to OFF */
-  { 23, GPIOF_OUT_INIT_LOW, "AD5" }, /* default to OFF */
-  { 24, GPIOF_OUT_INIT_LOW, "AD6" }, /* default to OFF */
-  { 25, GPIOF_OUT_INIT_LOW, "AD7" }  /* default to OFF */
-};
-static u8 ALE = 11;
-static u8 nRD = 17;
-static u8 nWR = 10;
-static u8 nCS = 18;
-static u8 nIRQ =  4;
+#ifdef REV1
+  static struct gpio ADi[8] = {
+    {  7, GPIOF_OUT_INIT_LOW, "AD0" }, /* default to OFF */
+    {  8, GPIOF_OUT_INIT_LOW, "AD1" }, /* default to OFF */
+    {  9, GPIOF_OUT_INIT_LOW, "AD2" }, /* default to OFF */
+    { 21, GPIOF_OUT_INIT_LOW, "AD3" }, /* default to OFF */
+    { 22, GPIOF_OUT_INIT_LOW, "AD4" }, /* default to OFF */
+    { 23, GPIOF_OUT_INIT_LOW, "AD5" }, /* default to OFF */
+    { 24, GPIOF_OUT_INIT_LOW, "AD6" }, /* default to OFF */
+    { 25, GPIOF_OUT_INIT_LOW, "AD7" }  /* default to OFF */
+  };
+  static u8 ALE = 11;
+  static u8 nRD = 17;
+  static u8 nWR = 10;
+  static u8 nCS = 18;
+  static u8 nIRQ =  4;
 
-static const u32 gpioMaskL = 0x0000380;
-static const u32 gpioMaskH = 0x3E00000;
-static const u32 gpioMask  = 0x3E00380;
+  static const u32 gpioMaskL = 0x0000380;
+  static const u32 gpioMaskH = 0x3e00000;
+  static const u32 gpioMask  = 0x3e00380;
 
-static const u32 gpioFSEL0_InpMask = 0xC01FFFFF;
-static const u32 gpioFSEL0_OutMask = 0x09200000;
-static const u32 gpioFSEL2_InpMask = 0xFFFC0007;
-static const u32 gpioFSEL2_OutMask = 0x00009248;
+  static const u32 gpioFSEL0_InpMask = 0xc01fffff;
+  static const u32 gpioFSEL0_OutMask = 0x09200000;
+  static const u32 gpioFSEL2_InpMask = 0xfffc0007;
+  static const u32 gpioFSEL2_OutMask = 0x00009248;
+#else
+  static struct gpio ADi[8] = {
+    {  7, GPIOF_OUT_INIT_LOW, "AD0" }, /* default to OFF */
+    {  8, GPIOF_OUT_INIT_LOW, "AD1" }, /* default to OFF */
+    {  9, GPIOF_OUT_INIT_LOW, "AD2" }, /* default to OFF */
+    { 27, GPIOF_OUT_INIT_LOW, "AD3" }, /* default to OFF */
+    { 22, GPIOF_OUT_INIT_LOW, "AD4" }, /* default to OFF */
+    { 23, GPIOF_OUT_INIT_LOW, "AD5" }, /* default to OFF */
+    { 24, GPIOF_OUT_INIT_LOW, "AD6" }, /* default to OFF */
+    { 25, GPIOF_OUT_INIT_LOW, "AD7" }  /* default to OFF */
+  };
+  static u8 ALE = 11;
+  static u8 nRD = 17;
+  static u8 nWR = 10;
+  static u8 nCS = 18;
+  static u8 nIRQ =  4;
+
+  static const u32 gpioMaskL = 0x0000380;
+  static const u32 gpioMaskM = 0x8000000;
+  static const u32 gpioMaskH = 0x3c00000;
+  static const u32 gpioMask  = 0xbc00380;
+
+  // @TODO: need to update these values for rev 2
+  static const u32 gpioFSEL0_InpMask = 0xc01fffff;
+  static const u32 gpioFSEL0_OutMask = 0x09200000;
+  static const u32 gpioFSEL2_InpMask = 0xfffc0007;
+  static const u32 gpioFSEL2_OutMask = 0x00009248;
+#endif
 
 static void __iomem *base;
 
@@ -95,10 +124,15 @@ u8 can_gpio_readreg( u8 reg ) {
   iowrite32( gpiodir, base + GPIOFSEL(2) );
   wmb();
 
+#ifdef REV1
   bufferSET  = ( reg & 0x07 ) <<  7;
-  bufferSET |= ( reg & 0xF8 ) << 18;
+  bufferSET |= ( reg & 0xf8 ) << 18;
+#else
+  bufferSET  = ( reg & 0x07 ) <<  7;
+  bufferSET |= ( reg & 0x08 ) << 24;
+  bufferSET |= ( reg & 0xf0 ) << 18;
+#endif
   bufferCLR  = ( ~(bufferSET) & gpioMask );
-
   // Write register address
   iowrite32( ( 1 << ALE ), base + GPIOSET(0) );
   wmb();
@@ -123,8 +157,14 @@ u8 can_gpio_readreg( u8 reg ) {
   // Read register contents
   buffer  = ioread32( base + GPIOLEV(0) );
   wmb();
+#ifdef REV1
   data  = (u8)(( buffer & gpioMaskL ) >>  7 );
   data |= (u8)(( buffer & gpioMaskH ) >> 18 );
+#else
+  data  = (u8)(( buffer & gpioMaskL ) >>  7 );
+  data |= (u8)(( buffer & gpioMaskM ) >> 24 );
+  data |= (u8)(( buffer & gpioMaskH ) >> 18 );
+#endif
 
   iowrite32( ( 1 << nCS ) | ( 1 << nRD ), base + GPIOSET(0) );
   wmb();
@@ -153,8 +193,14 @@ void can_gpio_writereg( u8 reg, u8 data ) {
   iowrite32( gpiodir, base + GPIOFSEL(2) );
   wmb();
 
+#ifdef REV1
   bufferSET  = ( reg & 0x07 ) <<  7;
-  bufferSET |= ( reg & 0xF8 ) << 18;
+  bufferSET |= ( reg & 0xf8 ) << 18;
+#else
+  bufferSET  = ( reg & 0x07 ) <<  7;
+  bufferSET  = ( reg & 0x08 ) << 24;
+  bufferSET |= ( reg & 0xf0 ) << 18;
+#endif
   bufferCLR  = ( ~(bufferSET) & gpioMask );
   // Write register address
   iowrite32( ( 1 << ALE ), base + GPIOSET(0) );
@@ -167,8 +213,14 @@ void can_gpio_writereg( u8 reg, u8 data ) {
   iowrite32( ( 1 << nCS ) | ( 1 << nWR ), base + GPIOCLR(0) );
   wmb();
 
+#ifdef REV1
   bufferSET  = ( data & 0x07 ) <<  7;
-  bufferSET |= ( data & 0xF8 ) << 18;
+  bufferSET |= ( data & 0xf8 ) << 18;
+#else
+  bufferSET  = ( data & 0x07 ) <<  7;
+  bufferSET |= ( data & 0x08 ) << 24;
+  bufferSET |= ( data & 0xf0 ) << 18;
+#endif
   bufferCLR  = ( ~(bufferSET) & gpioMask );
   iowrite32( bufferSET, base + GPIOSET(0) );
   iowrite32( bufferCLR, base + GPIOCLR(0) );

@@ -43,9 +43,15 @@
 #define P_THMP_TRG_IOBUFFER_STRING       "THMP_TRG_IO"            /* asynInt32,          w   */
 #define P_THMP_TRG_SERIALS_STRING        "THMP_TRG_SERIALS"       /* asynInt32,          w   */
 
+//! @brief   asynPortDriver for the Temperature and Humidity Monitoring Board for PANDA
+//!
+//! This asynPortDriver is a higher level driver used as device support for the
+//! Temperature and Humidity Monitoring Board for PANDA.\n
+//! It needs a lower level driver with a asynGenericPointer interface for
+//! accessing the hardware of the CAN bus interface.
 class drvAsynTHMP : public asynPortDriver {
  public:
-  drvAsynTHMP( const char *portName, const char *RPiCanPort, const int can_id );
+  drvAsynTHMP( const char *portName, const char *CanPort, const int can_id );
 
   /* These are the methods that we override from asynPortDriver */
   virtual asynStatus writeInt32( asynUser *pasynUser, epicsInt32 value );
@@ -55,16 +61,16 @@ class drvAsynTHMP : public asynPortDriver {
 
  protected:
   /** Values used for pasynUser->reason, and indexes into the parameter library. */
-  int P_RawValue;
+  int P_RawValue;       //!< index of parameter "THMP_RAWVALUE"
 #define FIRST_THMP_COMMAND P_RawValue
-  int P_IoBoard;
-  int P_Serials;
-  int P_ConfigIO;
-  int P_Firmware;
-  int P_Error;
-  int P_Trg_ADC;
-  int P_Trg_IO;
-  int P_Trg_Serials;
+  int P_IoBoard;        //!< index of parameter "THMP_IOBOARD"
+  int P_Serials;        //!< index of parameter "THMP_SERIALS"
+  int P_ConfigIO;       //!< index of parameter "THMP_CONFIG_IO"
+  int P_Firmware;       //!< index of parameter "THMP_FIRMWARE"
+  int P_Error;          //!< index of parameter "THMP_ERROR"
+  int P_Trg_ADC;        //!< index of parameter "THMP_TRG_ADC"
+  int P_Trg_IO;         //!< index of parameter "THMP_TRG_IO"
+  int P_Trg_Serials;    //!< index of parameter "THMP_TRG_SERIALS"
 #define LAST_THMP_COMMAND P_Trg_Serials
 
  private:

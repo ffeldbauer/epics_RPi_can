@@ -62,11 +62,18 @@ static const char *driverName = "drvAsynIsegHvGlobalDriver";
 
 //------------------------------------------------------------------------------
 //! @brief   Called when asyn clients call pasynInt32->write().
-//!          Perform one of the following tasks: Switch all HV channels off w/o ramp (emergency off)
-//!                                              Clear the event status of the module
+//!
+//!          If pasynUser->reason is equal to P_EmergencyOff this funciton
+//!          switched all channels connected to CanPort off w/o ramp.
 //!
 //! @param   [in]  pasynUser  pasynUser structure that encodes the reason and address
-//!          [in]  value      Value to write
+//! @param   [in]  value      Value to write
+//!
+//! @return  in case of no error occured asynSuccess is returned. Otherwise
+//!          asynError or asynTimeout is returned. A error message is stored
+//!          in pasynUser->errorMessage.
+//!
+//! @sa      drvAsynIsegHvGlobal::drvAsynIsegHvGlobal
 //------------------------------------------------------------------------------
 asynStatus drvAsynIsegHvGlobal::writeInt32( asynUser *pasynUser, epicsInt32 value ) {
   int function = pasynUser->reason;
@@ -110,11 +117,19 @@ asynStatus drvAsynIsegHvGlobal::writeInt32( asynUser *pasynUser, epicsInt32 valu
 
 //------------------------------------------------------------------------------
 //! @brief   Called when asyn clients call pasynUInt32Digital->write().
-//!          Switch all HV channels on / off
+//!
+//!          If pasynUser->reason is equal to P_SwitchOnOff this function
+//!          switches all channels connected to CanPort on / off.
 //!
 //! @param   [in]  pasynUser  pasynUser structure that encodes the reason and address
-//!          [in]  value      Value to write
-//!          [in]  mask       Mask value to use when reading the value.
+//! @param   [in]  value      Value to write
+//! @param   [in]  mask       Mask value to use when reading the value.
+//!
+//! @return  in case of no error occured asynSuccess is returned. Otherwise
+//!          asynError or asynTimeout is returned. A error message is stored
+//!          in pasynUser->errorMessage.
+//!
+//! @sa      drvAsynIsegHvGlobal::drvAsynIsegHvGlobal
 //------------------------------------------------------------------------------
 asynStatus drvAsynIsegHvGlobal::writeUInt32Digital( asynUser *pasynUser, epicsUInt32 value, epicsUInt32 mask ){
   int function = pasynUser->reason;
@@ -161,9 +176,9 @@ asynStatus drvAsynIsegHvGlobal::writeUInt32Digital( asynUser *pasynUser, epicsUI
 //!          Calls constructor for the asynPortDriver base class.
 //!
 //! @param   [in]  portName    The name of the asyn port driver to be created.
-//!          [in]  RPiCanPort  The name of the interface 
+//! @param   [in]  CanPort     The name of the asynPortDriver of the CAN bus interface 
 //------------------------------------------------------------------------------
-drvAsynIsegHvGlobal::drvAsynIsegHvGlobal( const char *portName, const char *RPiCanPort ) 
+drvAsynIsegHvGlobal::drvAsynIsegHvGlobal( const char *portName, const char *CanPort ) 
   : asynPortDriver( portName, 
                     1, /* maxAddr */ 
                     NUM_ISEGHVGLOBAL_PARAMS,
@@ -183,10 +198,10 @@ drvAsynIsegHvGlobal::drvAsynIsegHvGlobal( const char *portName, const char *RPiC
   createParam( P_ISEGHV_SWITCH_STRING,         asynParamUInt32Digital, &P_SwitchOnOff );
 
   /* Connect to asyn generic pointer port with asynGenericPointerSyncIO */
-  status = pasynGenericPointerSyncIO->connect( RPiCanPort, 0, &pAsynUserGenericPointer_, 0 );
+  status = pasynGenericPointerSyncIO->connect( CanPort, 0, &pAsynUserGenericPointer_, 0 );
   if ( status != asynSuccess ) {
-    printf( "%s:%s:%s: can't connect to asynGenericPointer on port '%s'\n", 
-            driverName, deviceName_, functionName, RPiCanPort_ );
+    frintf( stderr, "%s:%s:%s: can't connect to asynGenericPointer on port '%s'\n", 
+            driverName, deviceName_, functionName, CanPort );
     return;
   }
   

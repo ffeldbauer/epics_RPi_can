@@ -38,6 +38,7 @@
 int  sja1000_open( struct candev* dev, u16 btr0btr1 );
 void sja1000_release( struct candev* dev );
 u16  sja1000_bitrate( u32 dwBitRate );
+u16  sja1000_read_bitrate( void );
 int  sja1000_write( struct candev* dev );
 irqreturn_t can_sja1000_irqhandler( int irq, void* dev_id );
 

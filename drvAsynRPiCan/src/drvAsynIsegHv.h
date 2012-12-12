@@ -50,9 +50,15 @@
 #define P_ISEGHV_EMO_STRING                "ISEGHV_EMERGENCYOFF"        /* asynInt32,          w   */
 #define P_ISEGHV_SWITCH_STRING             "ISEGHV_SWITCHONOFF"         /* asynInt32,          w   */
 
+//! @brief   asynPortDriver for ISEG EDS/EHS high voltage modules
+//!
+//! This asynPortDriver is a higher level driver used as device support for the
+//! EDS/EHS high voltage modules of ISEG Spezialelektronik GmbH.\n
+//! It needs a lower level driver with a asynGenericPointer interface for
+//! accessing the hardware of the CAN bus interface.
 class drvAsynIsegHv : public asynPortDriver {
  public:
-  drvAsynIsegHv( const char *portName, const char *RPiCanPort, const int crate_id, const int module_id );
+  drvAsynIsegHv( const char *portName, const char *CanPort, const int crate_id, const int module_id );
 
   /* These are the methods that we override from asynPortDriver */
   virtual asynStatus writeInt32( asynUser *pasynUser, epicsInt32 value );
@@ -63,20 +69,21 @@ class drvAsynIsegHv : public asynPortDriver {
 
  protected:
   /** Values used for pasynUser->reason, and indexes into the parameter library. */
-  int P_Chan_status;
+
+  int P_Chan_status;       //!< index of Parameter "ISEGHV_CHAN_STATUS"
 #define FIRST_ISEGHV_COMMAND P_Chan_status
-  int P_Chan_Event_status;
-  int P_Chan_Vmom;
-  int P_Chan_Imom;
-  int P_Chan_Vset;
-  int P_Chan_Iset;
-  int P_Mod_status;
-  int P_Mod_Event_status;
-  int P_Temperature;
-  int P_RampSpeed;
-  int P_ClearEvtStatus;
-  int P_EmergencyOff;
-  int P_SwitchOnOff;
+  int P_Chan_Event_status; //!< index of Parameter "ISEGHV_CHAN_EVENT_STATUS"
+  int P_Chan_Vmom;         //!< index of Parameter "ISEGHV_CHAN_VMOM"
+  int P_Chan_Imom;         //!< index of Parameter "ISEGHV_CHAN_IMOM"
+  int P_Chan_Vset;         //!< index of Parameter "ISEGHV_CHAN_VSET"
+  int P_Chan_Iset;         //!< index of Parameter "ISEGHV_CHAN_ISET"
+  int P_Mod_status;        //!< index of Parameter "ISEGHV_MOD_STATUS"
+  int P_Mod_Event_status;  //!< index of Parameter "ISEGHV_MOD_EVENT_STATUS"
+  int P_Temperature;       //!< index of Parameter "ISEGHV_TEMPERATURE"
+  int P_RampSpeed;         //!< index of Parameter "ISEGHV_RAMPSPEED"
+  int P_ClearEvtStatus;    //!< index of Parameter "ISEGHV_CLEAR_EVENT_STATUS"
+  int P_EmergencyOff;      //!< index of Parameter "ISEGHV_EMERGENCYOFF"
+  int P_SwitchOnOff;       //!< index of Parameter "ISEGHV_SWITCHONOFF"
 #define LAST_ISEGHV_COMMAND P_SwitchOnOff
 
  private:

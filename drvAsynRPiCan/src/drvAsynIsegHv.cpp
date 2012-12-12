@@ -53,7 +53,7 @@
 
 typedef struct can_frame can_frame_t;
 
-// convert 32-bit float (IEEE 754) to 4*8 bit unsigned int
+//! used to convert 32-bit float (IEEE 754) to 4*8 bit unsigned int
 typedef union{
   epicsFloat32 fval;
   //  epicsUInt32  ival;
@@ -69,11 +69,17 @@ static const char *driverName = "drvAsynIsegHVDriver";
 
 //------------------------------------------------------------------------------
 //! @brief   Called when asyn clients call pasynInt32->write().
-//!          Clear Event status of module and all devices or switch all channels
-//!          off w/o ramp
+//!
+//!          If pasynUser->reason is equal
+//!          - P_ClearEvtStatus  the event status register of the module and all channels is cleared
+//!          - P_EmergencyOff    all channels of the module are switched off w/o ramp.
 //!
 //! @param   [in]  pasynUser  pasynUser structure that encodes the reason and address
-//!          [in]  value      Value to write
+//! @param   [in]  value      Value to write
+//!
+//! @return  in case of no error occured asynSuccess is returned. Otherwise
+//!          asynError or asynTimeout is returned. A error message is stored
+//!          in pasynUser->errorMessage.
 //------------------------------------------------------------------------------
 asynStatus drvAsynIsegHv::writeInt32( asynUser *pasynUser, epicsInt32 value ) {
   int function = pasynUser->reason;
@@ -101,8 +107,9 @@ asynStatus drvAsynIsegHv::writeInt32( asynUser *pasynUser, epicsInt32 value ) {
   status = pasynGenericPointerSyncIO->write( pAsynUserGenericPointer_, pframe, pasynUser->timeout );
   if ( status ) {
     epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "\033[31;1m%s:%s:%s: status=%d, function=%d, Could not send can frame.\033[0m", 
-                   driverName, deviceName_, functionName, status, function );
+                   "%s:%s:%s: status=%d, function=%d %s", 
+                   driverName, deviceName_, functionName, status, function,
+                   pAsynUserGenericPointer_->errorMessage );
     return asynError;
   }
   return status;
@@ -110,12 +117,23 @@ asynStatus drvAsynIsegHv::writeInt32( asynUser *pasynUser, epicsInt32 value ) {
 
 //------------------------------------------------------------------------------
 //! @brief   Called when asyn clients call pasynUInt32Digital->read().
-//!          Read module (event) status or channel (event) status
+//!
+//!          If pasynUser->reason is equal
+//!          - P_Chan_status        the status register of a channel is read out.
+//!                                 The addr parameter is used as channel number.
+//!          - P_Chan_Event_status  the event status register of a channel is read out.
+//!                                 The addr parameter is used as channel number.
+//!          - P_Mod_status         the status register of the module is read out.
+//!          - P_Mod_Event_status   the event status register of the module is read out.
 //!
 //! @param   [in]  pasynUser  pasynUser structure that encodes the reason and address
-//!          [out] value      Address of the value to read
-//!          [in]  mask       Mask value to use when reading the value.
-//------------------------------------------------------------------------------
+//! @param   [out] value      Address of the value to read
+//! @param   [in]  mask       Mask value to use when reading the value.
+//!
+//! @return  in case of no error occured asynSuccess is returned. Otherwise
+//!          asynError or asynTimeout is returned. A error message is stored
+//!          in pasynUser->errorMessage.
+//------------------------------_-----------------------------------------------
 asynStatus drvAsynIsegHv::readUInt32Digital( asynUser *pasynUser, epicsUInt32 *value, epicsUInt32 mask ){
   int function = pasynUser->reason;
   int addr = 0;
@@ -144,11 +162,18 @@ asynStatus drvAsynIsegHv::readUInt32Digital( asynUser *pasynUser, epicsUInt32 *v
   pframe->data[2] = (epicsUInt8)( addr & 0xff );
 
   status = pasynGenericPointerSyncIO->writeRead( pAsynUserGenericPointer_, pframe, pframe, pasynUser->timeout );
-  if ( status ){
+  if ( asynTimeout == status ){
     epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "\033[31;1m%s:%s:%s: status=%d, function=%d, No reply from device within %f s\033[0m", 
+                   "%s:%s:%s: status=%d, function=%d, No reply from device within %f s", 
                    driverName, deviceName_, functionName, status, function, pasynUser->timeout );
     return asynTimeout;
+  }
+  if ( status ){
+    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
+                   "%s:%s:%s: status=%d, function=%d %s", 
+                   driverName, deviceName_, functionName, status, function,
+                   pAsynUserGenericPointer_->errorMessage );
+    return asynError;
   }
   if ( ( pframe->can_id  != can_id_ ) ||
        ( pframe->can_dlc != ( it->second.dlc + 2 ) ) ||
@@ -156,7 +181,7 @@ asynStatus drvAsynIsegHv::readUInt32Digital( asynUser *pasynUser, epicsUInt32 *v
        ( pframe->data[1] != it->second.data1 ) 
        ){
     epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "\033[31;1m%s:%s:%s: function=%d, Mismatch in reply.\nGot %08x %d %02x %02x where %08x %d %02x %02x was expected\033[0m", 
+                   "%s:%s:%s: function=%d, Mismatch in reply.\nGot %08x %d %02x %02x where %08x %d %02x %02x was expected", 
                    driverName, deviceName_, functionName, function,
                    pframe->can_id, pframe->can_dlc, pframe->data[0], pframe->data[1],
                    can_id_, it->second.dlc + 4, it->second.data0, it->second.data1 );
@@ -189,7 +214,7 @@ asynStatus drvAsynIsegHv::readUInt32Digital( asynUser *pasynUser, epicsUInt32 *v
                    "\033[31;1m%s:%s:%s: status=%d, function=%d, value=%u mask=%u\033[0m", 
                    driverName, deviceName_, functionName, status, function, *value, mask );
   else        
-    asynPrint( pasynUser, ASYN_TRACEIO_DRIVER, 
+    asynPrint( pasynUser, ASYN_TRACEIO_DEVICE, 
                "%s:%s:%s: function=%d, value=%u, mask=%u\n", 
                driverName, deviceName_, functionName, function, *value, mask );
   return status;
@@ -197,11 +222,17 @@ asynStatus drvAsynIsegHv::readUInt32Digital( asynUser *pasynUser, epicsUInt32 *v
 
 //------------------------------------------------------------------------------
 //! @brief   Called when asyn clients call pasynUInt32Digital->write().
-//!          Switch all HV channels on / off
+//!
+//!          If pasynUser->reason is equal to P_SwitchOnOff this function
+//!          switches all channels on / off
 //!
 //! @param   [in]  pasynUser  pasynUser structure that encodes the reason and address
-//!          [in]  value      Value to write
-//!          [in]  mask       Mask value to use when reading the value.
+//! @param   [in]  value      Value to write
+//! @param   [in]  mask       Mask value to use when reading the value.
+//!
+//! @return  in case of no error occured asynSuccess is returned. Otherwise
+//!          asynError or asynTimeout is returned. A error message is stored
+//!          in pasynUser->errorMessage.
 //------------------------------------------------------------------------------
 asynStatus drvAsynIsegHv::writeUInt32Digital( asynUser *pasynUser, epicsUInt32 value, epicsUInt32 mask ){
   int function = pasynUser->reason;
@@ -214,18 +245,14 @@ asynStatus drvAsynIsegHv::writeUInt32Digital( asynUser *pasynUser, epicsUInt32 v
   status = getAddress( pasynUser, &addr ); if ( status != asynSuccess ) return status;
   if ( 0 != addr ) return asynSuccess;
   
-  /* Set the parameter in the parameter library. */
   status = (asynStatus) setUIntDigitalParam( addr, function, value, mask );
-  
-  /* Do callbacks so higher layers see any changes */
-  status = (asynStatus) callParamCallbacks( addr, addr );
-  
+  status = (asynStatus) callParamCallbacks( addr, addr );  
   if ( status ) 
     epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
                    "\033[31;1m%s:%s: status=%d, function=%d, value=%u, mask=%u\033[0m", 
                    driverName, functionName, status, function, value, mask );
   else        
-    asynPrint( pasynUser, ASYN_TRACEIO_DRIVER, 
+    asynPrint( pasynUser, ASYN_TRACEIO_DEVICE, 
                "%s:%s: function=%d, value=%d, mask=%u\n", 
                driverName, functionName, function, value, mask );
 
@@ -250,10 +277,11 @@ asynStatus drvAsynIsegHv::writeUInt32Digital( asynUser *pasynUser, epicsUInt32 v
   pframe->data[5] = dummy; // buffer[1];
 
   status = pasynGenericPointerSyncIO->write( pAsynUserGenericPointer_, pframe, pasynUser->timeout );
-  if ( status ) {
+  if ( status ){
     epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "\033[31;1m%s:%s:%s: function=%d, Could not send can frame.\033[0m", 
-                   driverName, deviceName_, functionName, function );
+                   "%s:%s:%s: status=%d, function=%d %s", 
+                   driverName, deviceName_, functionName, status, function,
+                   pAsynUserGenericPointer_->errorMessage );
     return asynError;
   }
   return status;
@@ -261,11 +289,25 @@ asynStatus drvAsynIsegHv::writeUInt32Digital( asynUser *pasynUser, epicsUInt32 v
 
 //------------------------------------------------------------------------------
 //! @brief   Called when asyn clients call pasynFloat64->read().
-//!          Read board temperature, measured voltages/currents or setpoints for
-//!          voltages and currents
+//!
+//!          If pasynUser->reason is equal
+//!          - P_Chan_Vmom   the measured voltage of a channel is read out.
+//!                          The addr parameter is used as channel number.
+//!          - P_Chan_Imom   the measured current of a channel is read out.
+//!                          The addr parameter is used as channel number.
+//!          - P_Chan_Vset   the set voltage of a channel is read out.
+//!                          The addr parameter is used as channel number.
+//!          - P_Chan_Iset   the current limit of a channel is read out.
+//!                          The addr parameter is used as channel number.
+//!          - P_Temperature the board temperature is read out.
+//!          - P_RampSpeed   the current ramp speed is read out.
 //!
 //! @param   [in]  pasynUser  pasynUser structure that encodes the reason and address
-//!          [out] value      Address of value to read
+//! @param   [out] value      Address of value to read
+//!
+//! @return  in case of no error occured asynSuccess is returned. Otherwise
+//!          asynError or asynTimeout is returned. A error message is stored
+//!          in pasynUser->errorMessage.
 //------------------------------------------------------------------------------
 asynStatus drvAsynIsegHv::readFloat64( asynUser *pasynUser, epicsFloat64 *value ) {
   int function = pasynUser->reason;
@@ -291,11 +333,18 @@ asynStatus drvAsynIsegHv::readFloat64( asynUser *pasynUser, epicsFloat64 *value 
   pframe->data[2] = (epicsUInt8)( addr & 0xff );
 
   status = pasynGenericPointerSyncIO->writeRead( pAsynUserGenericPointer_, pframe, pframe, pasynUser->timeout );
-  if ( status ){
+  if ( asynTimeout == status ){
     epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "\033[31;1m%s:%s:%s: status=%d, function=%d, No reply from device within %f s\033[0m", 
+                   "%s:%s:%s: status=%d, function=%d, No reply from device within %f s", 
                    driverName, deviceName_, functionName, status, function, pasynUser->timeout );
     return asynTimeout;
+  }
+  if ( status ){
+    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
+                   "%s:%s:%s: status=%d, function=%d %s", 
+                   driverName, deviceName_, functionName, status, function,
+                   pAsynUserGenericPointer_->errorMessage );
+    return asynError;
   }
   if ( ( pframe->can_id  != can_id_ ) ||
        ( pframe->can_dlc != ( it->second.dlc + 4 ) ) ||
@@ -303,7 +352,7 @@ asynStatus drvAsynIsegHv::readFloat64( asynUser *pasynUser, epicsFloat64 *value 
        ( pframe->data[1] != it->second.data1 ) 
        ){
     epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "\033[31;1m%s:%s:%s: function=%d, Mismatch in reply.\nGot %08x %d %02x %02x where %08x %d %02x %02x was expected\033[0m", 
+                   "%s:%s:%s: function=%d, Mismatch in reply.\nGot %08x %d %02x %02x where %08x %d %02x %02x was expected", 
                    driverName, deviceName_, functionName, function,
                    pframe->can_id, pframe->can_dlc, pframe->data[0], pframe->data[1],
                    can_id_, it->second.dlc + 4, it->second.data0, it->second.data1 );
@@ -331,10 +380,10 @@ asynStatus drvAsynIsegHv::readFloat64( asynUser *pasynUser, epicsFloat64 *value 
   status = (asynStatus) getDoubleParam( addr, function, value );
   if ( status ) 
     epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "\033[31;1m%s:%s:%s: status=%d, function=%d, value=%f\033[0m", 
+                   "%s:%s:%s: status=%d, function=%d, value=%f", 
                    driverName, deviceName_, functionName, status, function, *value );
   else        
-    asynPrint( pasynUser, ASYN_TRACEIO_DRIVER, 
+    asynPrint( pasynUser, ASYN_TRACEIO_DEVICE, 
                "%s:%s:%s: function=%d, value=%f\n", 
                driverName, deviceName_, functionName, function, *value );
   return status;
@@ -342,10 +391,20 @@ asynStatus drvAsynIsegHv::readFloat64( asynUser *pasynUser, epicsFloat64 *value 
 
 //------------------------------------------------------------------------------
 //! @brief   Called when asyn clients call pasynFloat64->write().
-//!          Change setpoint of rampspeed, voltage or currentlimit
+//!
+//!          If pasynUser->reason is equal
+//!          - P_Chan_Vset   the set voltage of a channel is written.
+//!                          The addr parameter is used as channel number.
+//!          - P_Chan_Iset   the current limit of a channel is written.
+//!                          The addr parameter is used as channel number.
+//!          - P_RampSpeed   the current ramp speed is written.
 //!
 //! @param   [in]  pasynUser  pasynUser structure that encodes the reason and address
-//!          [in]  value      Value to write
+//! @param   [in]  value      Value to write
+//!
+//! @return  in case of no error occured asynSuccess is returned. Otherwise
+//!          asynError or asynTimeout is returned. A error message is stored
+//!          in pasynUser->errorMessage.
 //------------------------------------------------------------------------------
 asynStatus drvAsynIsegHv::writeFloat64( asynUser *pasynUser, epicsFloat64 value ) {
   int function = pasynUser->reason;
@@ -384,22 +443,21 @@ asynStatus drvAsynIsegHv::writeFloat64( asynUser *pasynUser, epicsFloat64 value 
   status = pasynGenericPointerSyncIO->write( pAsynUserGenericPointer_, pframe, pasynUser->timeout );
   if ( status ){
     epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "\033[31;1m%s:%s:%s: status=%d, function=%d, Could not send can frame\033[0m", 
-                   driverName, deviceName_, functionName, status, function );
+                   "%s:%s:%s: status=%d, function=%d %s", 
+                   driverName, deviceName_, functionName, status, function,
+                   pAsynUserGenericPointer_->errorMessage );
     return asynError;
   }
   
   /* Set the parameter and readback in the parameter library. */
   status = setDoubleParam( addr, function, value );
-  
-  /* Do callbacks so higher layers see any changes */
   callParamCallbacks( addr, addr );
   if ( status ) 
     asynPrint( pasynUser, ASYN_TRACE_ERROR, 
                "%s:%s:%s: error, status=%d function=%d, value=%f\n", 
                driverName, deviceName_, functionName, status, function, value );
   else        
-    asynPrint( pasynUser, ASYN_TRACEIO_DRIVER, 
+    asynPrint( pasynUser, ASYN_TRACEIO_DEVICE, 
                "%s:%s:%s: function=%d, value=%f\n", 
                driverName, deviceName_, functionName, function, value );
   return status;
@@ -409,12 +467,12 @@ asynStatus drvAsynIsegHv::writeFloat64( asynUser *pasynUser, epicsFloat64 value 
 //! @brief   Constructor for the drvAsynIsegHv class.
 //!          Calls constructor for the asynPortDriver base class.
 //!
-//! @param   [in]  portName    The name of the asyn port driver to be created.
-//!          [in]  RPiCanPort  The name of the interface 
-//!          [in]  crate_id    The id of the crate
-//!          [in]  module_id   The id of the module inside the crate
+//! @param   [in]  portName    The name of the asynPortDriver to be created.
+//! @param   [in]  CanPort     The name of the asynPortDriver of the CAN bus interface 
+//! @param   [in]  crate_id    The id of the crate
+//! @param   [in]  module_id   The id of the module inside the crate
 //------------------------------------------------------------------------------
-drvAsynIsegHv::drvAsynIsegHv( const char *portName, const char *RPiCanPort,
+drvAsynIsegHv::drvAsynIsegHv( const char *portName, const char *CanPort,
                               const int crate_id, const int module_id ) 
   : asynPortDriver( portName, 
                     16, /* maxAddr */ 
@@ -449,10 +507,10 @@ drvAsynIsegHv::drvAsynIsegHv( const char *portName, const char *RPiCanPort,
   createParam( P_ISEGHV_SWITCH_STRING,         asynParamUInt32Digital, &P_SwitchOnOff );
 
   /* Connect to asyn generic pointer port with asynGenericPointerSyncIO */
-  status = pasynGenericPointerSyncIO->connect( RPiCanPort, 0, &pAsynUserGenericPointer_, 0 );
+  status = pasynGenericPointerSyncIO->connect( CanPort, 0, &pAsynUserGenericPointer_, 0 );
   if ( status != asynSuccess ) {
-    printf( "%s:%s:%s: can't connect to asynGenericPointer on port '%s'\n", 
-            driverName, deviceName_, functionName, RPiCanPort );
+    fprintf( stderr, "%s:%s:%s: can't connect to asynGenericPointer on port '%s'\n", 
+             driverName, deviceName_, functionName, CanPort );
     return;
   }
   

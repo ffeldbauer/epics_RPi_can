@@ -21,13 +21,13 @@ drvAsynRPiCanSupport_LIBS += $(EPICS_BASE_IOC_LIBS)
 
 #=============================
 
-#PROD_IOC += drvAsynRPiCan
+PROD_IOC += drvAsynRPiCan
 
 # <name>_registerRecordDeviceDriver.cpp will be created from <name>.dbd
-#drvAsynRPiCan_SRCS_DEFAULT += drvAsynRPiCan_registerRecordDeviceDriver.cpp AsynRPiCanMain.cpp
+drvAsynRPiCan_SRCS_DEFAULT += drvAsynRPiCan_registerRecordDeviceDriver.cpp AsynRPiCanMain.cpp
 
-#drvAsynRPiCan_LIBS += drvAsynRPiCanSupport asyn
-#drvAsynRPiCan_LIBS += $(EPICS_BASE_IOC_LIBS)
+drvAsynRPiCan_LIBS += drvAsynRPiCanSupport asyn
+drvAsynRPiCan_LIBS += $(EPICS_BASE_IOC_LIBS)
 
 #===========================
 

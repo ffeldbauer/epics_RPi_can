@@ -17,7 +17,7 @@
 //!
 //! @author  F. Feldbauer <florian@ep1.ruhr-uni-bochum.de>
 //!
-//! @brief   Asyn Port Driver for RPi Can interface
+//! @brief   AsynPortDriver for PANDA Raspberry Pi CAN interface
 //!
 //! @version 1.0.0; Nov. 27, 2012
 //******************************************************************************
@@ -47,7 +47,6 @@
 #include <iocsh.h>
 
 #include "drvAsynRPiCan.h"
-#include "drvAsynRPiCanDebug.h"
 
 //_____ D E F I N I T I O N S __________________________________________________
 
@@ -60,10 +59,19 @@ static const char *driverName = "drvAsynRPiCanDriver";
 
 //------------------------------------------------------------------------------
 //! @brief   Called when asyn clients call pasynGenericPointer->read().
-//!          Generic Pointer should match can_frame_t
+//!
+//!          Try to read a CAN frame from the kernel module.
+//!          pasynUser->timeout is used as timeout in seconds.
+//!          genericPointer should be of type 'struct can_frame'.
 //!
 //! @param   [in]  pasynUser       pasynUser structure that encodes the reason and address.
-//!          [out] genericPointer  Pointer to the object to read.
+//! @param   [out] genericPointer  Pointer to the object to read.
+//!
+//! @return  in case of no error occured asynSuccess is returned. Otherwise
+//!          asynError or asynTimeout is returned. A error message is stored
+//!          in pasynUser->errorMessage.
+//!
+//! @sa      drvAsynRPiCan::drvRPiCanRead
 //------------------------------------------------------------------------------
 asynStatus drvAsynRPiCan::readGenericPointer( asynUser *pasynUser, void *genericPointer ) {
   const char* functionName = "readGenericPointer";
@@ -74,78 +82,110 @@ asynStatus drvAsynRPiCan::readGenericPointer( asynUser *pasynUser, void *generic
   if ( CAN_ERR_QRCVEMPTY == err )  return asynTimeout;
 
   if ( 0 != err ) {
-    fprintf( stderr, "\033[31;1m %s:%s: Error receiving message from device: %d %s \033[0m \n", 
-             driverName, functionName, err, strerror( err ) );
+    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
+                   "Error receiving message from device '%s': %d %s", 
+                   deviceName_, err, strerror( err ) );
     return asynError;
   }  
-  if ( drvAsynRPiCanDebug > 0 ) {
-    printf( "%s:%s: received frame '%08x %d %02x %02x %02x %02x %02x %02x %02x %02x'\n", 
-            driverName, functionName, pframe->can_id, pframe->can_dlc,
-            pframe->data[0], pframe->data[1], pframe->data[2], pframe->data[3],
-            pframe->data[4], pframe->data[5], pframe->data[6], pframe->data[7] );
-  }
+  asynPrint( pasynUser, ASYN_TRACEIO_DRIVER, 
+             "%s:%s: received frame '%08x %d %02x %02x %02x %02x %02x %02x %02x %02x'\n", 
+             driverName, functionName, pframe->can_id, pframe->can_dlc,
+             pframe->data[0], pframe->data[1], pframe->data[2], pframe->data[3],
+             pframe->data[4], pframe->data[5], pframe->data[6], pframe->data[7] );
 
   return asynSuccess;
 }
 
 //------------------------------------------------------------------------------
 //! @brief   Called when asyn clients call pasynGenericPointer->write().
-//!          Generic Pointer should match can_frame_t
+//!
+//!          Write a CAN frame to the kernel module.
+//!          pasynUser->timeout is used as timeout in seconds.
+//!          genericPointer should be of type 'struct can_frame'
 //!
 //! @param   [in]  pasynUser       pasynUser structure that encodes the reason and address.
-//!          [in]  genericPointer  Pointer to the object to write.
+//! @param   [in]  genericPointer  Pointer to the object to write.
+//!
+//! @return  in case of no error occured asynSuccess is returned. Otherwise
+//!          asynError or asynTimeout is returned. A error message is stored
+//!          in pasynUser->errorMessage.
+//!
+//! @sa      drvAsynRPiCan::drvRPiCanWrite
 //------------------------------------------------------------------------------
 asynStatus drvAsynRPiCan::writeGenericPointer( asynUser *pasynUser, void *genericPointer ) {
   const char* functionName = "writeGenericPointer";
   can_frame_t *myFrame = (can_frame_t *)genericPointer;
   int mytimeout = (int)( pasynUser->timeout * 1.e6 );
  
-  if ( drvAsynRPiCanDebug > 0 ) {
-    printf( "%s:%s: sending frame '%08x %d %02x %02x %02x %02x %02x %02x %02x %02x'\n", 
-            driverName, functionName, myFrame->can_id, myFrame->can_dlc,
-            myFrame->data[0], myFrame->data[1], myFrame->data[2], myFrame->data[3],
-            myFrame->data[4], myFrame->data[5], myFrame->data[6], myFrame->data[7] );
-  }
+  asynPrint( pasynUser, ASYN_TRACEIO_DRIVER, 
+             "%s:%s: sending frame '%08x %d %02x %02x %02x %02x %02x %02x %02x %02x'\n", 
+             driverName, functionName, myFrame->can_id, myFrame->can_dlc,
+             myFrame->data[0], myFrame->data[1], myFrame->data[2], myFrame->data[3],
+             myFrame->data[4], myFrame->data[5], myFrame->data[6], myFrame->data[7] );
+
   int err = drvRPiCanWrite( myFrame, mytimeout );
   if ( 0 != err ) {
-    fprintf( stderr, "\033[31;1m %s:%s: Error sending message to device: %s \033[0m \n", 
-             driverName, functionName, strerror( err ) );
+    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
+                   "Error sending message to device '%s': %s", 
+                   deviceName_, strerror( err ) );
     return asynError;
   }  
   return asynSuccess;
 }
 
 //------------------------------------------------------------------------------
-//! @brief   Called from asynGetOption shell command
+//! @brief   Called when asyn clients call pasynOption->read()
+//!
+//!          If key is equal to "bitrate" the bitrate settings of the CAN bus
+//!          interface is read out.
 //!
 //! @param   [in]  pasynUser       pasynUser structure that encodes the reason and address.
-//!          [in]  key             Name of option
-//!          [out] value           String containing the value for the option
-//!          []    maxChars        
+//! @param   [in]  key             Name of option
+//! @param   [out] value           String containing the value for the option
+//! @param   [in]  maxChars        Size of value string
+//!
+//! @return  in case of no error occured asynSuccess is returned. Otherwise
+//!          asynError is returned. A error message is stored
+//!          in pasynUser->errorMessage.
 //------------------------------------------------------------------------------
 asynStatus drvAsynRPiCan::readOption( asynUser *pasynUser, const char *key,
                                       char *value, int maxChars ) {
   if( epicsStrCaseCmp( key, "bitrate" ) == 0 ) {
-    // currently reading the actual bitrate is not supported by kernel module
+    TPBTR0BTR1 ratix;
+    int err = ioctl( fd_, CAN_GET_BITRATE, &ratix );
+    if ( err ) {
+      epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize,
+                     "%s:%s: Could not read bitrate settings from interface '%s'. %s",
+                     driverName, functionName, deviceName_, strerror( errno ) );
+      return asynError;
+    }
+    bitrate_ = ratix.dwBitRate;
     char dummy[10];
     sprintf( dummy, "%u", bitrate_ );
     strcpy(value, dummy);
   } else {
-      epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize,
-                     "%s:%s: Invalid option key '%s'",
-                     driverName, functionName, key );
-      return asynError;
+    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize,
+                   "%s:%s: Invalid option key '%s'",
+                   driverName, functionName, key );
+    return asynError;
   }
     
   return asynSuccess;
 }
 
 //------------------------------------------------------------------------------
-//! @brief   Called from asynSetOption shell command
+//! @brief   Called when asyn clients call pasynOption->write()
+//!
+//!          If key is equal to "bitrate" the bitrate settings of the CAN bus
+//!          interface is changed to value.
 //!
 //! @param   [in]  pasynUser       pasynUser structure that encodes the reason and address.
-//!          [in]  key             Name of option
-//!          [in]  value           String containing the value for the option
+//! @param   [in]  key             Name of option
+//! @param   [in]  value           String containing the value for the option
+//!
+//! @return  in case of no error occured asynSuccess is returned. Otherwise
+//!          asynError is returned. A error message is stored
+//!          in pasynUser->errorMessage.
 //------------------------------------------------------------------------------
 asynStatus drvAsynRPiCan::writeOption( asynUser *pasynUser, const char *key, const char *value ) {
   const char* functionName = "writeOption";
@@ -178,10 +218,17 @@ asynStatus drvAsynRPiCan::writeOption( asynUser *pasynUser, const char *key, con
 }
 
 //------------------------------------------------------------------------------
-//! @brief   write a frame to the interface
+//! @brief   This functions is the actual interface to the hardware for sending
+//!          CAN frames
+//!
+//!          Using the PANDA Raspberry Pi CAN Extension Board this function
+//!          uses ioctl funciton to access the kernel module
 //!
 //! @param   [in]  pframe     CAN frame to send
-//!          [in]  timeout    timeout in microseconds
+//! @param   [in]  timeout    timeout in microseconds
+//!
+//! @return  In case of no error occured 0 is returned. In case of a timeout
+//!          CAN_ERR_QXMTFULL is returned. Otherwise ERRNO is returned
 //------------------------------------------------------------------------------
 int drvAsynRPiCan::drvRPiCanWrite( can_frame_t *pframe, int timeout ){
 
@@ -212,10 +259,17 @@ int drvAsynRPiCan::drvRPiCanWrite( can_frame_t *pframe, int timeout ){
 }
 
 //------------------------------------------------------------------------------
-//! @brief   read a frame from the interface
+//! @brief   This functions is the actual interface to the hardware for reading
+//!          CAN frames
+//!
+//!          Using the PANDA Raspberry Pi CAN Extension Board this function
+//!          uses ioctl funciton to access the kernel module
 //!
 //! @param   [out] pframe     CAN frame read
-//!          [in]  timeout    timeout in microseconds
+//! @param   [in]  timeout    timeout in microseconds
+//!
+//! @return  In case of no error occured 0 is returned. In case of a timeout
+//!          CAN_ERR_QRCVEMPTY is returned. Otherwise ERRNO is returned
 //------------------------------------------------------------------------------
 int drvAsynRPiCan::drvRPiCanRead( can_frame_t *pframe, int timeout ){
   if ( timeout < 0)
@@ -248,9 +302,8 @@ int drvAsynRPiCan::drvRPiCanRead( can_frame_t *pframe, int timeout ){
 //! @brief   Constructor for the drvAsynRPiCan class.
 //!          Calls constructor for the asynPortDriver base class.
 //!
-//! @param   [in]  portName The name of the asyn port driver to be created.
-//!          [in]  ttyName  The name of the device
-//!          [in]  bitrate  The bitrate of the CAN interface
+//! @param   [in]  portName The name of the asynPortDriver to be created.
+//! @param   [in]  ttyName  The name of the device
 //------------------------------------------------------------------------------
 drvAsynRPiCan::drvAsynRPiCan( const char *portName, const char *ttyName ) 
   : asynPortDriver( portName,
@@ -266,7 +319,7 @@ drvAsynRPiCan::drvAsynRPiCan( const char *portName, const char *ttyName )
   const char *functionName = "drvAsynRPiCan";
     
   deviceName_ = epicsStrDup( ttyName );
-
+  
   // open interface
   fd_ = open( deviceName_, O_RDWR );
   if ( 0 > fd_ ){
@@ -274,7 +327,15 @@ drvAsynRPiCan::drvAsynRPiCan( const char *portName, const char *ttyName )
              driverName, functionName, deviceName_, strerror( errno ) );
     return;
   }
-  bitrate_ = 125000;
+  
+  TPBTR0BTR1 ratix;
+  int err = ioctl( fd_, CAN_GET_BITRATE, &ratix );
+  if ( err ) {
+    fprintf( stderr, "\033[31;1m %s:%s: Could not read bitrate settings from interface '%s'. %s \033[0m \n",
+             driverName, functionName, deviceName_, strerror( errno ) );
+    return;
+  }
+  bitrate_ = ratix.dwBitRate;
     
 }
 

@@ -62,130 +62,85 @@ static const char *driverName = "drvAsynWienerVMEDriver";
 //_____ F U N C T I O N S ______________________________________________________
 
 //------------------------------------------------------------------------------
-//! @brief   Ask the crate for given values and update the parameter list
-//!
-//! @param   [in]  can_id     CAN id for this message
-//!          [in]  funcitons  Address of array containing all functions related to this command
-//!          [in]  num        Number of elements related to this command
-//------------------------------------------------------------------------------
-asynStatus drvAsynWienerVme::readValues( const epicsUInt32 cmd, epicsUInt32 mask, asynUser *pasynUser ){
-  asynStatus status = asynSuccess;
-  can_frame_t *pframe = new can_frame_t;
-  pframe->can_id  = ( cmd << 7 ) | crate_id_ | CAN_RTR_FLAG;
-  pframe->can_dlc = 8;
-  
-  status = pasynGenericPointerSyncIO->writeRead( pAsynUserGenericPointer_, pframe, pframe, pasynUser->timeout );
-  if ( status ){
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "\033[31;1m%s:%s:readValues: No reply from device within %f s.\033[0m", 
-                   driverName, deviceName_, pasynUser->timeout );
-    return asynTimeout;
-  }
-  if ( pframe->can_id != ( ( cmd << 7 ) | crate_id_ ) || pframe->can_dlc != 8 ) {
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "\033[31;1m%s:%s:readValues: cmd=%d, Mismatch in reply.\n Got '%08x %d...' where '%x08 8...' was expected.\033[0m", 
-                   driverName, deviceName_, cmd, pframe->can_id, pframe->can_dlc, ( cmd << 7 )|crate_id_  );
-    return asynError;
-  }
-  
-  switch ( cmd ) {
-  case 0:
-    status = setUIntDigitalParam( P_Status0, pframe->data[0], mask );
-    status = setUIntDigitalParam( P_Status1, pframe->data[1], mask );
-    status = setUIntDigitalParam( P_Status2, pframe->data[2], mask );
-    status = setUIntDigitalParam( P_Status3, pframe->data[3], mask );
-    status = setUIntDigitalParam( P_Status4, pframe->data[4], mask );
-    status = setUIntDigitalParam( P_Status5, pframe->data[5], mask );
-    status = setUIntDigitalParam( P_Status6, pframe->data[6], mask );
-    status = setUIntDigitalParam( P_Status7, pframe->data[7], mask );
-    break;
-
-  case 2:
-    status = setIntegerParam( P_Vmom0, ( pframe->data[1] << 8 ) | pframe->data[0] );
-    status = setIntegerParam( P_Imom0, ( pframe->data[3] << 8 ) | pframe->data[2] );
-    status = setIntegerParam( P_Vmom4, ( pframe->data[5] << 8 ) | pframe->data[4] );
-    status = setIntegerParam( P_Imom4, ( pframe->data[7] << 8 ) | pframe->data[6] );
-    break;
-
-  case 3:
-    status = setIntegerParam( P_Vmom1, ( pframe->data[1] << 8 ) | pframe->data[0] );
-    status = setIntegerParam( P_Imom1, ( pframe->data[3] << 8 ) | pframe->data[2] );
-    status = setIntegerParam( P_Vmom5, ( pframe->data[5] << 8 ) | pframe->data[4] );
-    status = setIntegerParam( P_Imom5, ( pframe->data[7] << 8 ) | pframe->data[6] );
-    break;
-
-  case 4:
-    status = setIntegerParam( P_Vmom2, ( pframe->data[1] << 8 ) | pframe->data[0] );
-    status = setIntegerParam( P_Imom2, ( pframe->data[3] << 8 ) | pframe->data[2] );
-    status = setIntegerParam( P_Vmom6, ( pframe->data[5] << 8 ) | pframe->data[4] );
-    status = setIntegerParam( P_Imom6, ( pframe->data[7] << 8 ) | pframe->data[6] );
-    break;
-
-  case 5:
-    status = setIntegerParam( P_Vmom3, ( pframe->data[1] << 8 ) | pframe->data[0] );
-    status = setIntegerParam( P_Imom3, ( pframe->data[3] << 8 ) | pframe->data[2] );
-    status = setIntegerParam( P_Vmom7, ( pframe->data[5] << 8 ) | pframe->data[4] );
-    status = setIntegerParam( P_Imom7, ( pframe->data[7] << 8 ) | pframe->data[6] );
-    break;
-
-  case 6:
-    status = setIntegerParam( P_FanMiddle, pframe->data[0] );
-    status = setIntegerParam( P_FanNominal, pframe->data[1] );
-    status = setIntegerParam( P_Fan1, pframe->data[2] );
-    status = setIntegerParam( P_Fan2, pframe->data[3] );
-    status = setIntegerParam( P_Fan3, pframe->data[4] );
-    status = setIntegerParam( P_Fan4, pframe->data[5] );
-    status = setIntegerParam( P_Fan5, pframe->data[6] );
-    status = setIntegerParam( P_Fan6, pframe->data[7] );
-    break;
-
-  case 7:
-    status = setIntegerParam( P_Temp1, pframe->data[0] );
-    status = setIntegerParam( P_Temp2, pframe->data[1] );
-    status = setIntegerParam( P_Temp3, pframe->data[2] );
-    status = setIntegerParam( P_Temp4, pframe->data[3] );
-    status = setIntegerParam( P_Temp5, pframe->data[4] );
-    status = setIntegerParam( P_Temp6, pframe->data[5] );
-    status = setIntegerParam( P_Temp7, pframe->data[6] );
-    status = setIntegerParam( P_Temp8, pframe->data[7] );
-    break;
-    
-  default:
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "\033[31;1m%s:%s:readValues: Invalid function.\033[0m", 
-                   driverName, deviceName_ );
-    
-    return asynError;
-    
-  }  
-  if ( status ) return status;
-
-  /* Do callbacks so higher layers see any changes */
-  status = (asynStatus) callParamCallbacks();
-  return status;
-}
-
-//------------------------------------------------------------------------------
 //! @brief   Called when asyn clients call pasynInt32->read().
 //!          
+//!          If pasynUser->reason is equal
+//!          - P_Vmom0       the measured voltages and currents of channels 0
+//!                          and 4 are read out and stored in the corresponding
+//!                          parameters.
+//!          - P_Vmom1       the measured voltages and currents of channels 1
+//!                          and 5 are read out and stored in the corresponding
+//!                          parameters.
+//!          - P_Vmom2       the measured voltages and currents of channels 2
+//!                          and 6 are read out and stored in the corresponding
+//!                          parameters.
+//!          - P_Vmom3       the measured voltages and currents of channels 3
+//!                          and 7 are read out and stored in the corresponding
+//!                          parameters.
+//!          - P_FanMiddle   the measured fan speeds, middle fan speed, and
+//!                          nominal fan speed are read out and stored in
+//!                          the corresponding parameters.
+//!          - P_Temp1       the measured temperatures are read out and stored in
+//!                          the corresponding parameters.
+//!          - any other:    the value from the parameter library will be returned.
 //!
 //! @param   [in]  pasynUser  pasynUser structure that encodes the reason and address
-//!          [out] value      Address of the value to read
+//! @param   [out] value      Address of the value to read
+//!
+//! @return  in case of no error occured asynSuccess is returned. Otherwise
+//!          asynError or asynTimeout is returned. A error message is stored
+//!          in pasynUser->errorMessage.
 //------------------------------------------------------------------------------
 asynStatus drvAsynWienerVme::readInt32( asynUser *pasynUser, epicsInt32 *value ) {
   int function = pasynUser->reason;
   asynStatus status = asynSuccess;
   const char *functionName = "readInt32";
 
-  if ( function == P_Vmom0 )            status = readValues ( 2, 0, pasynUser );
-  else if ( function == P_Vmom1 )       status = readValues ( 3, 0, pasynUser );
-  else if ( function == P_Vmom2 )       status = readValues ( 4, 0, pasynUser );
-  else if ( function == P_Vmom3 )       status = readValues ( 5, 0, pasynUser );
-  else if ( function == P_FanMiddle )   status = readValues ( 6, 0, pasynUser );
-  else if ( function == P_Temp1 )       status = readValues ( 7, 0, pasynUser );
+  std::map<int, vme_cmd_t>::const_iterator it = cmds_.find( function );
+  if( it != cmdsUIn32D_.end() ) {
+    can_frame_t *pframe = new can_frame_t;
+    pframe->can_id  = it->second.cmd | crate_id_ | CAN_RTR_FLAG;
+    pframe->can_dlc = 8;
+    status = pasynGenericPointerSyncIO->writeRead( pAsynUserGenericPointer_, pframe, pframe, pasynUser->timeout );
+    if ( asynTimeout == status ){
+      epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
+                     "%s:%s:%s: status=%d, function=%d, No reply from device within %f s", 
+                     driverName, deviceName_, functionName, status, function, pasynUser->timeout );
+      return asynTimeout;
+    }
+    if ( status ){
+      epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
+                     "%s:%s:%s: status=%d, function=%d %s", 
+                     driverName, deviceName_, functionName, status, function,
+                     pAsynUserGenericPointer_->errorMessage );
+      return asynError;
+    }
+    if ( pframe->can_id != ( it->second.cmd | crate_id_ ) || pframe->can_dlc != 8 ) {
+      epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
+                     "\033[31;1m%s:%s:%s: function=%d, Mismatch in reply.\n Got '%08x %d...' where '%x08 8...' was expected.\033[0m", 
+                     driverName, deviceName_, functionName, function, pframe->can_id, pframe->can_dlc, it->second.cmd | crate_id_ );
+      return asynError;
+    }
+    
+    if ( it->second.num == 4 ) {
+      status = setIntegerParam( it->second.params[0], ( pframe->data[1] << 8 ) | pframe->data[0] );
+      status = setIntegerParam( it->second.params[1], ( pframe->data[3] << 8 ) | pframe->data[2] );
+      status = setIntegerParam( it->second.params[2], ( pframe->data[5] << 8 ) | pframe->data[4] );
+      status = setIntegerParam( it->second.params[3], ( pframe->data[7] << 8 ) | pframe->data[6] );
+    } else {
+      status = setIntegerParam( it->second.params[0], pframe->data[0] );
+      status = setIntegerParam( it->second.params[1], pframe->data[1] );
+      status = setIntegerParam( it->second.params[2], pframe->data[2] );
+      status = setIntegerParam( it->second.params[3], pframe->data[3] );
+      status = setIntegerParam( it->second.params[4], pframe->data[4] );
+      status = setIntegerParam( it->second.params[5], pframe->data[5] );
+      status = setIntegerParam( it->second.params[6], pframe->data[6] );
+      status = setIntegerParam( it->second.params[7], pframe->data[7] );
+    }    
+    
+    status = (asynStatus) callParamCallbacks();
+  }
   
-  if ( status ) return status;
-
   // read back parameter
   status = (asynStatus) getIntegerParam( function, value );
   if ( status )
@@ -193,7 +148,7 @@ asynStatus drvAsynWienerVme::readInt32( asynUser *pasynUser, epicsInt32 *value )
                    "\033[31;1m%s:%s:%s: status=%d, function=%d, value=%u\033[0m", 
                    driverName, deviceName_, functionName, status, function, *value );
   else        
-    asynPrint( pasynUser, ASYN_TRACEIO_DRIVER, 
+    asynPrint( pasynUser, ASYN_TRACEIO_DEVICE, 
                "%s:%s:%s: function=%d, value=%u\n", 
                driverName, deviceName_, functionName, function, *value );
   
@@ -202,10 +157,17 @@ asynStatus drvAsynWienerVme::readInt32( asynUser *pasynUser, epicsInt32 *value )
 
 //------------------------------------------------------------------------------
 //! @brief   Called when asyn clients call pasynInt32->write().
-//!          Change nominal fan speed ( all other Int32Params: do nothing! )
+//!
+//!          If pasynUser->reason is equal to
+//!          - P_FanSpeed  the nominal fan speed will be changed to value
+//!          - P_sysreset  a system reset of the crate will be performed
 //!
 //! @param   [in]  pasynUser  pasynUser structure that encodes the reason and address
-//!          [in]  value      Value to write
+//! @param   [in]  value      Value to write
+//!
+//! @return  in case of no error occured asynSuccess is returned. Otherwise
+//!          asynError or asynTimeout is returned. A error message is stored
+//!          in pasynUser->errorMessage.
 //------------------------------------------------------------------------------
 asynStatus drvAsynWienerVme::writeInt32( asynUser *pasynUser, epicsInt32 value ) {
   int function = pasynUser->reason;
@@ -214,10 +176,7 @@ asynStatus drvAsynWienerVme::writeInt32( asynUser *pasynUser, epicsInt32 value )
   
   if ( ( function != P_FanSpeed ) && ( function != P_Sysreset ) ) return asynSuccess;
   
-  /* Set the parameter in the parameter library. */
   status = (asynStatus) setIntegerParam( function, value );
-  
-  /* Do callbacks so higher layers see any changes */
   status = (asynStatus) callParamCallbacks();
   
   if( status ) 
@@ -225,7 +184,7 @@ asynStatus drvAsynWienerVme::writeInt32( asynUser *pasynUser, epicsInt32 value )
                    "\033[31;1m%s:%s:%s: status=%d, function=%d, value=%d\033[0m", 
                    driverName, deviceName_, functionName, status, function, value );
   else        
-    asynPrint( pasynUser, ASYN_TRACEIO_DRIVER, 
+    asynPrint( pasynUser, ASYN_TRACEIO_DEVICE, 
                "%s:%s:%s: function=%d, value=%d\n", 
                driverName, deviceName_, functionName, function, value );
   
@@ -253,11 +212,19 @@ asynStatus drvAsynWienerVme::writeInt32( asynUser *pasynUser, epicsInt32 value )
 
 //------------------------------------------------------------------------------
 //! @brief   Called when asyn clients call pasynUInt32Digital->read().
-//!          Read module (event) status or channel (event) status
+//!
+//!          If pasynUser->reason is equal
+//!          - P_Status0     the status bytes are read out and stored in
+//!                          the corresponding parameters.
+//!          - any other:    the value from the parameter library will be returned.
 //!
 //! @param   [in]  pasynUser  pasynUser structure that encodes the reason and address
-//!          [out] value      Address of the value to read
-//!          [in]  mask       Mask value to use when reading the value.
+//! @param   [out] value      Address of the value to read
+//! @param   [in]  mask       Mask value to use when reading the value.
+//!
+//! @return  in case of no error occured asynSuccess is returned. Otherwise
+//!          asynError or asynTimeout is returned. A error message is stored
+//!          in pasynUser->errorMessage.
 //------------------------------------------------------------------------------
 asynStatus drvAsynWienerVme::readUInt32Digital( asynUser *pasynUser, epicsUInt32 *value, epicsUInt32 mask ) {
   int function = pasynUser->reason;
@@ -265,8 +232,41 @@ asynStatus drvAsynWienerVme::readUInt32Digital( asynUser *pasynUser, epicsUInt32
   const char *functionName = "readUInt32Digital";
 
   if ( function == P_Status0 ) {
-    status = readValues( 0, mask, pasynUser );
-    if ( status ) return status;
+    can_frame_t *pframe = new can_frame_t;
+    pframe->can_id  = crate_id_ | CAN_RTR_FLAG;
+    pframe->can_dlc = 8;
+    
+    status = pasynGenericPointerSyncIO->writeRead( pAsynUserGenericPointer_, pframe, pframe, pasynUser->timeout );
+    if ( asynTimeout == status ){
+      epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
+                     "%s:%s:%s: status=%d, function=%d, No reply from device within %f s", 
+                     driverName, deviceName_, functionName, status, function, pasynUser->timeout );
+      return asynTimeout;
+    }
+    if ( status ){
+      epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
+                     "%s:%s:%s: status=%d, function=%d %s", 
+                     driverName, deviceName_, functionName, status, function,
+                     pAsynUserGenericPointer_->errorMessage );
+      return asynError;
+    }
+    if ( pframe->can_id != crate_id_ || pframe->can_dlc != 8 ) {
+      epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
+                     "\033[31;1m%s:%s:%s: function=%d, Mismatch in reply.\n Got '%08x %d...' where '%x08 8...' was expected.\033[0m", 
+                     driverName, deviceName_, functionName, function, pframe->can_id, pframe->can_dlc, crate_id_  );
+      return asynError;
+    }
+
+    status = setUIntDigitalParam( P_Status0, pframe->data[0], mask );
+    status = setUIntDigitalParam( P_Status1, pframe->data[1], mask );
+    status = setUIntDigitalParam( P_Status2, pframe->data[2], mask );
+    status = setUIntDigitalParam( P_Status3, pframe->data[3], mask );
+    status = setUIntDigitalParam( P_Status4, pframe->data[4], mask );
+    status = setUIntDigitalParam( P_Status5, pframe->data[5], mask );
+    status = setUIntDigitalParam( P_Status6, pframe->data[6], mask );
+    status = setUIntDigitalParam( P_Status7, pframe->data[7], mask );
+
+    status = (asynStatus) callParamCallbacks();
   }
 
   // read back parameter
@@ -276,7 +276,7 @@ asynStatus drvAsynWienerVme::readUInt32Digital( asynUser *pasynUser, epicsUInt32
                    "\033[31;1m%s:%s:%s: status=%d, function=%d, value=%u mask=%u\033[0m", 
                    driverName, deviceName_, functionName, status, function, *value, mask );
   else        
-    asynPrint( pasynUser, ASYN_TRACEIO_DRIVER, 
+    asynPrint( pasynUser, ASYN_TRACEIO_DEVICE, 
                "%s:%s:%s: function=%d, value=%u, mask=%u\n", 
                driverName, deviceName_, functionName, function, *value, mask );
   return status;
@@ -284,11 +284,17 @@ asynStatus drvAsynWienerVme::readUInt32Digital( asynUser *pasynUser, epicsUInt32
 
 //------------------------------------------------------------------------------
 //! @brief   Called when asyn clients call pasynUInt32Digital->write().
-//!          Switch crate on/off
+//!          
+//!          If pasynUser->reason is equal to P_Switch this function
+//!          switches the crate on and off, respectively
 //!
 //! @param   [in]  pasynUser  pasynUser structure that encodes the reason and address
-//!          [in]  value      Value to write
-//!          [in]  mask       Mask value to use when reading the value.
+//! @param   [in]  value      Value to write
+//! @param   [in]  mask       Mask value to use when reading the value.
+//!
+//! @return  in case of no error occured asynSuccess is returned. Otherwise
+//!          asynError or asynTimeout is returned. A error message is stored
+//!          in pasynUser->errorMessage.
 //------------------------------------------------------------------------------
 asynStatus drvAsynWienerVme::writeUInt32Digital( asynUser *pasynUser, epicsUInt32 value, epicsUInt32 mask ){
   int function = pasynUser->reason;
@@ -308,7 +314,7 @@ asynStatus drvAsynWienerVme::writeUInt32Digital( asynUser *pasynUser, epicsUInt3
                    "\033[31;1m%s:%s:%s: status=%d, function=%d, value=%d, mask=%u\033[0m", 
                    driverName, deviceName_, functionName, status, function, value, mask );
   else        
-    asynPrint( pasynUser, ASYN_TRACEIO_DRIVER, 
+    asynPrint( pasynUser, ASYN_TRACEIO_DEVICE, 
                "%s:%s:%s: function=%d, value=%d, mask=%u\n", 
                driverName, deviceName_, functionName, function, value, mask );
 
@@ -331,11 +337,11 @@ asynStatus drvAsynWienerVme::writeUInt32Digital( asynUser *pasynUser, epicsUInt3
 //! @brief   Constructor for the drvAsynWienerVme class.
 //!          Calls constructor for the asynPortDriver base class.
 //!
-//! @param   [in]  portName    The name of the asyn port driver to be created.
-//!          [in]  RPiCanPort  The name of the interface 
-//!          [in]  crate_id    The id of the crate
+//! @param   [in]  portName    The name of the asynPortDriver to be created.
+//! @param   [in]  CanPort     The name of the asynPortDriver of the CAN bus interface 
+//! @param   [in]  crate_id    The id of the crate
 //------------------------------------------------------------------------------
-drvAsynWienerVme::drvAsynWienerVme( const char *portName, const char *RPiCanPort, const int crate_id ) 
+drvAsynWienerVme::drvAsynWienerVme( const char *portName, const char *CanPort, const int crate_id ) 
   : asynPortDriver( portName, 
                     1, /* maxAddr */ 
                     NUM_WIENERVME_PARAMS,
@@ -398,10 +404,10 @@ drvAsynWienerVme::drvAsynWienerVme( const char *portName, const char *RPiCanPort
   createParam( P_WIENERVME_CHANGEFAN_STRING,  asynParamInt32,         &P_FanSpeed );
 
   /* Connect to asyn generic pointer port with asynGenericPointerSyncIO */
-  status = pasynGenericPointerSyncIO->connect( RPiCanPort, 0, &pAsynUserGenericPointer_, 0 );
+  status = pasynGenericPointerSyncIO->connect( CanPort, 0, &pAsynUserGenericPointer_, 0 );
   if ( status != asynSuccess ) {
     printf( "%s:%s:%s: can't connect to asynGenericPointer on port '%s'\n", 
-            driverName, deviceName_, functionName, RPiCanPort );
+            driverName, deviceName_, functionName, CanPort );
   }
   
   // Get inital value for Switch-Parameter
@@ -426,6 +432,21 @@ drvAsynWienerVme::drvAsynWienerVme( const char *portName, const char *RPiCanPort
     return;
   }
   setIntegerParam( P_FanSpeed, pframe->data[1] );
+
+  vme_cmd_t vc04_cmd = { ( 2 << 7 ), 4, { P_Vmom0, P_Imom0, P_Vmom4, P_Imom4 } };
+  cmds_.insert( std::make_pair( P_Vmom0, vc04_cmd ) );
+  vme_cmd_t vc15_cmd = { ( 3 << 7 ), 4, { P_Vmom1, P_Imom1, P_Vmom5, P_Imom5 } };
+  cmds_.insert( std::make_pair( P_Vmom1, vc15_cmd ) );
+  vme_cmd_t vc26_cmd = { ( 4 << 7 ), 4, { P_Vmom2, P_Imom2, P_Vmom6, P_Imom6 } };
+  cmds_.insert( std::make_pair( P_Vmom2, vc26_cmd ) );
+  vme_cmd_t vc37_cmd = { ( 5 << 7 ), 4, { P_Vmom3, P_Imom3, P_Vmom7, P_Imom7 } };
+  cmds_.insert( std::make_pair( P_Vmom3, vc37_cmd ) );
+  vme_cmd_t fan_cmd = { ( 6 << 7 ), 8, { P_FanMiddle, P_FanNominal, P_Fan1,
+                                         P_Fan2, P_Fan3, P_Fan4, P_Fan5, P_Fan6 } };
+  cmds_.insert( std::make_pair( P_FanMiddle, fan_cmd ) );
+  vme_cmd_t temp_cmd = { ( 7 << 7 ), 8, { P_Temp1, P_Temp2, P_Temp3, P_Temp4,
+                                          P_Temp5, P_Temp6, P_Temp7, P_Temp8 } };
+  cmds_.insert( std::make_pair( P_Temp1, temp_cmd ) );
 
 }
 

@@ -23,7 +23,7 @@
 //!
 //! @brief   all about CAN message filtering
 //!
-//! @version 1.0.0
+//! @version 2.0.0
 //******************************************************************************
 
 #ifndef __CAN_FILTER_H__

@@ -2,9 +2,9 @@
 # modules on the fly.
 
 obj-m += rpi_can.o
-canbus-objs := can_main.o can_fifo.o can_gpio.o can_parse.o can_sja1000.o can_filter.o
+rpi_can-objs := can_main.o can_fifo.o can_gpio.o can_parse.o can_sja1000.o can_filter.o
 
-ccflags-y := -I$(src) #-DREV1
+ccflags-y := -I$(src)
 
 all:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules

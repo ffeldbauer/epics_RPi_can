@@ -200,8 +200,8 @@ drvAsynIsegHvGlobal::drvAsynIsegHvGlobal( const char *portName, const char *CanP
   /* Connect to asyn generic pointer port with asynGenericPointerSyncIO */
   status = pasynGenericPointerSyncIO->connect( CanPort, 0, &pAsynUserGenericPointer_, 0 );
   if ( status != asynSuccess ) {
-    frintf( stderr, "%s:%s:%s: can't connect to asynGenericPointer on port '%s'\n", 
-            driverName, deviceName_, functionName, CanPort );
+    fprintf( stderr, "%s:%s:%s: can't connect to asynGenericPointer on port '%s'\n", 
+             driverName, deviceName_, functionName, CanPort );
     return;
   }
   

@@ -23,7 +23,7 @@
 //!
 //! @brief   Main part of driver. Defines fops, init and release funcitons
 //!
-//! @version 1.0.0
+//! @version 2.0.0
 //******************************************************************************
 
 //_____ I N C L U D E S _______________________________________________________
@@ -137,6 +137,7 @@ static int can_open( struct inode *inode, struct file *filep ) {
     // open the device itself
     err = sja1000_open( dev, dev->wBTR0BTR1 );
     if (err) {
+      can_gpio_free_irq( dev );
       printk( KERN_ERR "%s: can't open device hardware itself!\n", DEVICE_NAME );
       return err;
     }
@@ -599,17 +600,17 @@ static int can_ioctl_get_BTR0BTR1( struct candev *dev, TPBTR0BTR1 *BTR0BTR1 ) {
   int err = 0;
   TPBTR0BTR1 local;
 
-  local.dwBitRate = sja1000_read_bitrate();
-  switch ( local.dwBitRate ) {
-  case   CAN_BAUD_1M: local.wBTR0BTR1 = 1000000; break;
-  case CAN_BAUD_500K: local.wBTR0BTR1 =  500000; break;
-  case CAN_BAUD_250K: local.wBTR0BTR1 =  250000; break;
-  case CAN_BAUD_125K: local.wBTR0BTR1 =  125000; break;
-  case CAN_BAUD_100K: local.wBTR0BTR1 =  100000; break;
-  case  CAN_BAUD_50K: local.wBTR0BTR1 =   50000; break;
-  case  CAN_BAUD_20K: local.wBTR0BTR1 =   20000; break;
-  case  CAN_BAUD_10K: local.wBTR0BTR1 =   10000; break;
-  case   CAN_BAUD_5K: local.wBTR0BTR1 =    5000; break;
+  local.wBTR0BTR1 = sja1000_read_bitrate();
+  switch ( local.wBTR0BTR1 ) {
+  case   CAN_BAUD_1M: local.dwBitRate = 1000000; break;
+  case CAN_BAUD_500K: local.dwBitRate =  500000; break;
+  case CAN_BAUD_250K: local.dwBitRate =  250000; break;
+  case CAN_BAUD_125K: local.dwBitRate =  125000; break;
+  case CAN_BAUD_100K: local.dwBitRate =  100000; break;
+  case  CAN_BAUD_50K: local.dwBitRate =   50000; break;
+  case  CAN_BAUD_20K: local.dwBitRate =   20000; break;
+  case  CAN_BAUD_10K: local.dwBitRate =   10000; break;
+  case   CAN_BAUD_5K: local.dwBitRate =    5000; break;
   }
 
   if (copy_to_user(BTR0BTR1, &local, sizeof(local))) {
@@ -675,6 +676,9 @@ long can_ioctl( struct file *filep, unsigned int cmd, unsigned long arg ) {
   case CAN_BITRATE:
     err = can_ioctl_BTR0BTR1(dev, (TPBTR0BTR1 *)arg);
     break;
+  case CAN_GET_BITRATE:
+    err = can_ioctl_get_BTR0BTR1(dev, (TPBTR0BTR1 *)arg);
+    break;
   case CAN_MSG_FILTER:
     err = can_ioctl_msg_filter(dev, (TPMSGFILTER *)arg);
     break;
@@ -706,7 +710,7 @@ struct file_operations can_fops = {
 //! @fn      init_module
 //!
 //! @brief   Initialize the module. is called when the device is installed
-//           'insmod canbus.ko'
+//           'insmod rpi_can.ko'
 //!
 //! @return: 0 on success otherwise -ERRNO
 //------------------------------------------------------------------------------
@@ -765,7 +769,7 @@ int init_module( void ) {
 
   can_drv_initStep = 2;
 
-  device_create( can_drv_class, NULL, MKDEV( can_drv_major, can_drv_minor ), NULL, "canbus%d", can_drv_minor);
+  device_create( can_drv_class, NULL, MKDEV( can_drv_major, can_drv_minor ), NULL, "rpi_can%d", can_drv_minor);
 
   can_drv_initStep = 3;
 
@@ -781,7 +785,7 @@ int init_module( void ) {
 //! @fn      cleanup_module
 //!
 //! @brief   Release the module. is called when the device is removed
-//           'rmmod canbus.ko'
+//           'rmmod rpi_can.ko'
 //------------------------------------------------------------------------------
 void cleanup_module( void ) {
   switch( can_drv_initStep ) {

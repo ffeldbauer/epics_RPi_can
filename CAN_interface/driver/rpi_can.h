@@ -23,7 +23,7 @@
 //!
 //! @brief   constants and definitions to access the drivers
 //!
-//! @version 1.0.0
+//! @version 2.0.0
 //******************************************************************************
 
 #ifndef __RASPPI_CAN_H__
@@ -35,7 +35,7 @@
 #include <linux/can.h>
 
 //_____ D E F I N I T I O N S __________________________________________________
-#define CURRENT_RELEASE "Release_20120702_n"
+#define CURRENT_RELEASE "Release_20121220_n"
 #define DEVICE_NAME "RaspPiCanInterface"
 
 //****************************************************************************

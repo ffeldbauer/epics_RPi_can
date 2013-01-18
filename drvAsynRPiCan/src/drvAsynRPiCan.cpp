@@ -150,6 +150,7 @@ asynStatus drvAsynRPiCan::writeGenericPointer( asynUser *pasynUser, void *generi
 //------------------------------------------------------------------------------
 asynStatus drvAsynRPiCan::readOption( asynUser *pasynUser, const char *key,
                                       char *value, int maxChars ) {
+  const char* functionName = "readOption";
   if( epicsStrCaseCmp( key, "bitrate" ) == 0 ) {
     TPBTR0BTR1 ratix;
     int err = ioctl( fd_, CAN_GET_BITRATE, &ratix );

@@ -102,7 +102,7 @@ asynStatus drvAsynTmcm142::readInt32( asynUser *pasynUser, epicsInt32 *value ) {
   }
 
   std::map<int, epicsUInt8>::const_iterator it = cmds_r_.find( function );
-  if( it == cmds_.end() ) return asynError;
+  if( it == cmds_r_.end() ) return asynError;
   
   can_frame_t *pframe = new can_frame_t;
   pframe->can_id = can_id_w_;
@@ -185,7 +185,7 @@ asynStatus drvAsynTmcm142::writeInt32( asynUser *pasynUser, epicsInt32 value ) {
   status = getAddress( pasynUser, &addr ); if( status != asynSuccess ) return status;
 
   std::map<int, epicsUInt8>::const_iterator it = cmds_w_.find( function );
-  if( it == cmds_.end() ) return asynError;
+  if( it == cmds_w_.end() ) return asynError;
   
   split_t myValue; myValue.val32 = value;
   can_frame_t *pframe = new can_frame_t;
@@ -260,8 +260,8 @@ drvAsynTmcm142::drvAsynTmcm142( const char *portName, const char *CanPort,
   : asynPortDriver( portName, 
                     256, /* maxAddr */ 
                     NUM_TMCM142_PARAMS,
-                    asynCommonMask | asynInt32Mask | asynUInt32Digital | asynDrvUserMask, /* Interface mask */
-                    asynCommonMask | asynInt32Mask | asynUInt32Digital,  /* Interrupt mask */
+                    asynCommonMask | asynInt32Mask | asynDrvUserMask, /* Interface mask */
+                    asynCommonMask | asynInt32Mask,  /* Interrupt mask */
                     ASYN_CANBLOCK | ASYN_MULTIDEVICE, /* asynFlags. */
                     1, /* Autoconnect */
                     0, /* Default priority */
@@ -349,49 +349,6 @@ drvAsynTmcm142::drvAsynTmcm142( const char *portName, const char *CanPort,
     return;
   }
 }
-
-/* Configuration routines.  Called directly, or from the iocsh function below */
-extern "C" {
-
-  //----------------------------------------------------------------------------
-  //! @brief   EPICS iocsh callable function to call constructor
-  //!          for the drvAsynTmcm142 class.
-  //!
-  //! @param   [in]  portName    The name of the asyn port driver to be created.
-  //!          [in]  RPiCanPort  The name of the interface 
-  //!          [in]  can_id_w    The CAN id of this TMCM142 driver
-  //!          [in]  can_id_r    The CAN Reply id of this TMCM142 driver
-  //----------------------------------------------------------------------------
-  int drvAsynTmcm142Configure( const char *portName, const char *RPiCanPort,
-                               const int can_id_w, const int can_id_r ) {
-    new drvAsynTmcm142( portName, RPiCanPort, can_id_w, can_id_r );
-    return( asynSuccess );
-  }
-  static const iocshArg initArg0 = { "portName",   iocshArgString };
-  static const iocshArg initArg1 = { "RPiCanPort", iocshArgString };
-  static const iocshArg initArg2 = { "can_id_w",   iocshArgInt };
-  static const iocshArg initArg3 = { "can_id_r",   iocshArgInt };
-  static const iocshArg * const initArgs[] = { &initArg0, &initArg1,
-                                               &initArg2, &initArg3 };
-  static const iocshFuncDef initFuncDef = { "drvAsynTmcm142Configure", 4, initArgs };
-  static void initCallFunc( const iocshArgBuf *args ) {
-    drvAsynTmcm142Configure( args[0].sval, args[1].sval, args[2].ival, args[3].ival );
-  }
-  
-  //----------------------------------------------------------------------------
-  //! @brief   Register functions to EPICS
-  //----------------------------------------------------------------------------
-  void drvAsynTmcm142Register( void ) {
-    static int firstTime = 1;
-    if ( firstTime ) {
-      iocshRegister( &initFuncDef, initCallFunc );
-      firstTime = 0;
-    }
-  }
-  
-  epicsExportRegistrar( drvAsynTmcm142Register );
-}
-
 
 //******************************************************************************
 //! EOF

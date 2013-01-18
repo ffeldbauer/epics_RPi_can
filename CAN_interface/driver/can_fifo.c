@@ -6,7 +6,7 @@
 //! @brief   all about fifo buffer management
 //!          BASED ON peak-linux-driver-7.6 (http://www.peak-system.com/)
 //!
-//! @version 1.0.0
+//! @version 2.0.0
 //******************************************************************************
 
 //_____ I N C L U D E S _______________________________________________________

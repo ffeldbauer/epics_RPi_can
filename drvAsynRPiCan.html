@@ -23,6 +23,7 @@
     <a href="#drvAsynWienerVme">drvAsynWienerVme</a><br />
     <a href="#drvAsynTHMP">drvAsynTHMP</a><br />
     <a href="#drvAsynLedPulser">drvAsynLedPulser</a><br />
+    <a href="#drvAsynTmcm142">drvAsynTmcm142</a><br />
     <a href="#install">Install and Build</a><br />
 
   </div>
@@ -288,6 +289,29 @@
   </table>
   <p>The LED Pulser doesn't use the ADDR parameter, therfore it is always 0.<br/>
     The TIMEOUT parameter is not really significant because this is a synchronous asyn port driver.</p>
+
+  <hr />
+  <div style="text-align: center">
+    <h2 id="drvAsynTmcm142">drvAsynTmcm142</h2>
+  </div>
+  <p>The drvAsynTmcm142 driver supports the TMCM142 1-axis stepper controller/driver.
+    It uses the drvAsynRPiCan driver as lower-level driver.
+    Therefore the drvAsynRPiCan driver has to be configured before using this driver.
+    <br /><br />
+    A TMCM142 controller is configured with the <tt>drvAsynTmcm142Configure</tt> command:</p>
+  <pre>  drvAsynLedPulserConfigure( "portName", "RPiCanPort", can_id_w, can_id_r )</pre>
+  <p>where the arguments are:</p>
+  <ul>
+    <li>portName - The portName that is registered with asynManager.</li>
+    <li>RPiCanPort - The name of a previous configured drvAsynRPiCan driver.</li>
+    <li>can_id_w - The unique CAN Bus id of this motor driver.</li>
+    <li>can_id_r - The unique CAN Bus id of this motor driver used for replies.</li>
+  </ul>
+  <p>Accessing this driver from the IOC is done by the standard device support from asynDriver.
+    All parameters are of type asynInt32. For parameter names the Mnemonic commands of the controller
+    are used. The address parameter from AsynDriver is used to code the <i>type</i> inside the command.
+    Bank/Motor id is hard coded as 0.<br />
+    For additional information refer to the <a href="http://www.mocontronic.de/files/TMCM-142_TMCL_firmware_manual.pdf">TMCL Firmware Manual</a></p>
 
   <hr />
   <div style="text-align: center">

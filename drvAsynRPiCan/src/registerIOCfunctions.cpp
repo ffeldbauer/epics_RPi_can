@@ -47,6 +47,7 @@
 #include "drvAsynWienerVME.h"
 #include "drvAsynTHMP.h"
 #include "drvAsynLedPulser.h"
+#include "drvAsynTmcm142.h"
 
 //_____ D E F I N I T I O N S __________________________________________________
 
@@ -198,6 +199,31 @@ extern "C" {
   }
 
   //----------------------------------------------------------------------------
+  //! @brief   EPICS iocsh callable function to call constructor
+  //!          for the drvAsynTmcm142 class.
+  //!
+  //! @param   [in]  portName    The name of the asyn port driver to be created.
+  //!          [in]  RPiCanPort  The name of the interface 
+  //!          [in]  can_id_w    The CAN id of this TMCM142 driver
+  //!          [in]  can_id_r    The CAN Reply id of this TMCM142 driver
+  //----------------------------------------------------------------------------
+  int drvAsynTmcm142Configure( const char *portName, const char *RPiCanPort,
+                               const int can_id_w, const int can_id_r ) {
+    new drvAsynTmcm142( portName, RPiCanPort, can_id_w, can_id_r );
+    return( asynSuccess );
+  }
+  static const iocshArg initTmcm142Arg0 = { "portName",   iocshArgString };
+  static const iocshArg initTmcm142Arg1 = { "RPiCanPort", iocshArgString };
+  static const iocshArg initTmcm142Arg2 = { "can_id_w",   iocshArgInt };
+  static const iocshArg initTmcm142Arg3 = { "can_id_r",   iocshArgInt };
+  static const iocshArg * const initTmcm142Args[] = { &initTmcm142Arg0, &initTmcm142Arg1,
+                                                      &initTmcm142Arg2, &initTmcm142Arg3 };
+  static const iocshFuncDef initTmcm142FuncDef = { "drvAsynTmcm142Configure", 4, initTmcm142Args };
+  static void initTmcm142CallFunc( const iocshArgBuf *args ) {
+    drvAsynTmcm142Configure( args[0].sval, args[1].sval, args[2].ival, args[3].ival );
+  }
+
+  //----------------------------------------------------------------------------
   //! @brief   Register functions to EPICS
   //----------------------------------------------------------------------------
   void drvAsynRPiCanRegister( void ) {
@@ -209,6 +235,7 @@ extern "C" {
       iocshRegister( &initWienerVmeFuncDef,    initWienerVmeCallFunc );
       iocshRegister( &initThmpFuncDef,         initThmpCallFunc );
       iocshRegister( &initLedPulserFuncDef,    initLedPulserCallFunc );
+      iocshRegister( &initTmcm142FuncDef,      initTmcm142CallFunc );
       firstTime = 0;
     }
   }

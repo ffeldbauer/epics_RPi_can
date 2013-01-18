@@ -23,7 +23,7 @@
 //!
 //! @brief   header for read input parser and write output formatter
 //!
-//! @version 1.0.0
+//! @version 2.0.0
 //******************************************************************************
 
 #ifndef __CAN_PARSE_H__

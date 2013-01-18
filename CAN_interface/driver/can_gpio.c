@@ -19,7 +19,7 @@
 //!
 //! @brief   all parts of the GPIO hardware to interface the SJA1000
 //!
-//! @version 1.0.0
+//! @version 2.0.0
 //******************************************************************************
 
 //_____ I N C L U D E S _______________________________________________________
@@ -41,68 +41,49 @@
 //_____ G L O B A L S __________________________________________________________
 
 //_____ L O C A L S ____________________________________________________________
-#ifdef REV1
-  static struct gpio ADi[8] = {
-    {  7, GPIOF_OUT_INIT_LOW, "AD0" }, /* default to OFF */
-    {  8, GPIOF_OUT_INIT_LOW, "AD1" }, /* default to OFF */
-    {  9, GPIOF_OUT_INIT_LOW, "AD2" }, /* default to OFF */
-    { 21, GPIOF_OUT_INIT_LOW, "AD3" }, /* default to OFF */
-    { 22, GPIOF_OUT_INIT_LOW, "AD4" }, /* default to OFF */
-    { 23, GPIOF_OUT_INIT_LOW, "AD5" }, /* default to OFF */
-    { 24, GPIOF_OUT_INIT_LOW, "AD6" }, /* default to OFF */
-    { 25, GPIOF_OUT_INIT_LOW, "AD7" }  /* default to OFF */
-  };
-  static u8 ALE = 11;
-  static u8 nRD = 17;
-  static u8 nWR = 10;
-  static u8 nCS = 18;
-  static u8 nIRQ =  4;
 
-  static const u32 gpioMaskL = 0x0000380;
-  static const u32 gpioMaskH = 0x3e00000;
-  static const u32 gpioMask  = 0x3e00380;
+// GPIOs used as address/data lines
+static struct gpio ADi[8] = {
+  {  7, GPIOF_OUT_INIT_LOW, "AD0" }, /* default to OFF */
+  {  8, GPIOF_OUT_INIT_LOW, "AD1" }, /* default to OFF */
+  {  9, GPIOF_OUT_INIT_LOW, "AD2" }, /* default to OFF */
+  { 27, GPIOF_OUT_INIT_LOW, "AD3" }, /* default to OFF */
+  { 22, GPIOF_OUT_INIT_LOW, "AD4" }, /* default to OFF */
+  { 23, GPIOF_OUT_INIT_LOW, "AD5" }, /* default to OFF */
+  { 24, GPIOF_OUT_INIT_LOW, "AD6" }, /* default to OFF */
+  { 25, GPIOF_OUT_INIT_LOW, "AD7" }  /* default to OFF */
+};
 
-  static const u32 gpioFSEL0_InpMask = 0xc01fffff;
-  static const u32 gpioFSEL0_OutMask = 0x09200000;
-  static const u32 gpioFSEL2_InpMask = 0xfffc0007;
-  static const u32 gpioFSEL2_OutMask = 0x00009248;
-#else
-  static struct gpio ADi[8] = {
-    {  7, GPIOF_OUT_INIT_LOW, "AD0" }, /* default to OFF */
-    {  8, GPIOF_OUT_INIT_LOW, "AD1" }, /* default to OFF */
-    {  9, GPIOF_OUT_INIT_LOW, "AD2" }, /* default to OFF */
-    { 27, GPIOF_OUT_INIT_LOW, "AD3" }, /* default to OFF */
-    { 22, GPIOF_OUT_INIT_LOW, "AD4" }, /* default to OFF */
-    { 23, GPIOF_OUT_INIT_LOW, "AD5" }, /* default to OFF */
-    { 24, GPIOF_OUT_INIT_LOW, "AD6" }, /* default to OFF */
-    { 25, GPIOF_OUT_INIT_LOW, "AD7" }  /* default to OFF */
-  };
-  static u8 ALE = 11;
-  static u8 nRD = 17;
-  static u8 nWR = 10;
-  static u8 nCS = 18;
-  static u8 nIRQ =  4;
+// GPIOs used as ctrl lines
+static u8 ALE = 11;
+static u8 nRD = 17;
+static u8 nWR = 10;
+static u8 nCS = 18;
+static u8 nIRQ = 4;
 
-  static const u32 gpioMaskL = 0x0000380;
-  static const u32 gpioMaskM = 0x8000000;
-  static const u32 gpioMaskH = 0x3c00000;
-  static const u32 gpioMask  = 0xbc00380;
+// Masks for LEV/SET/CLRn registers to get GPIOs used as A/D lines
+static const u32 gpioMaskL = (  7 <<  7 );
+static const u32 gpioMaskM = (  1 << 27 );
+static const u32 gpioMaskH = ( 15 << 22 );
+static const u32 gpioMask  = ( 15 << 22 ) | (  1 << 27 ) | (  7 <<  7 );
 
-  // @TODO: need to update these values for rev 2
-  static const u32 gpioFSEL0_InpMask = 0xc01fffff;
-  static const u32 gpioFSEL0_OutMask = 0x09200000;
-  static const u32 gpioFSEL2_InpMask = 0xfffc0007;
-  static const u32 gpioFSEL2_OutMask = 0x00009248;
-#endif
+// Masks to switch direction of GPIOs used as A/D lines
+// FSEL(n) = 000 Input, = 001 Output
+// use InpMasks with & operator and OutMask with | operator
+static const u32 gpioFSEL0_InpMask = ~( ( 7 << 21 ) | ( 7 << 24 ) | ( 7 << 27 ) );
+static const u32 gpioFSEL0_OutMask = ( 1 << 21 ) | ( 1 << 24 ) | ( 1 << 27 );
+static const u32 gpioFSEL2_InpMask = ~( ( 7 << 6 ) | ( 7 << 9 ) | ( 7 << 12 ) | ( 7 << 15 ) | ( 7 << 21 ) );
+static const u32 gpioFSEL2_OutMask = ( 1 << 6 ) | ( 1 << 9 ) | ( 1 << 12 ) | ( 1 << 15 ) | ( 1 << 21 );
 
+// Address base of GPIO registers
 static void __iomem *base;
 
 //_____ F U N C T I O N S ______________________________________________________
 
 //------------------------------------------------------------------------------
-//! @fn      can_gpio_readreg
-//!
 //! @brief   read contents of a register
+//!
+//! @param   [in]  reg:   Address of register
 //!
 //! @return  contents of register
 //------------------------------------------------------------------------------
@@ -124,16 +105,11 @@ u8 can_gpio_readreg( u8 reg ) {
   iowrite32( gpiodir, base + GPIOFSEL(2) );
   wmb();
 
-#ifdef REV1
-  bufferSET  = ( reg & 0x07 ) <<  7;
-  bufferSET |= ( reg & 0xf8 ) << 18;
-#else
+  // Write register address
   bufferSET  = ( reg & 0x07 ) <<  7;
   bufferSET |= ( reg & 0x08 ) << 24;
   bufferSET |= ( reg & 0xf0 ) << 18;
-#endif
   bufferCLR  = ( ~(bufferSET) & gpioMask );
-  // Write register address
   iowrite32( ( 1 << ALE ), base + GPIOSET(0) );
   wmb();
   iowrite32( bufferSET, base + GPIOSET(0) );
@@ -157,14 +133,9 @@ u8 can_gpio_readreg( u8 reg ) {
   // Read register contents
   buffer  = ioread32( base + GPIOLEV(0) );
   wmb();
-#ifdef REV1
-  data  = (u8)(( buffer & gpioMaskL ) >>  7 );
-  data |= (u8)(( buffer & gpioMaskH ) >> 18 );
-#else
   data  = (u8)(( buffer & gpioMaskL ) >>  7 );
   data |= (u8)(( buffer & gpioMaskM ) >> 24 );
   data |= (u8)(( buffer & gpioMaskH ) >> 18 );
-#endif
 
   iowrite32( ( 1 << nCS ) | ( 1 << nRD ), base + GPIOSET(0) );
   wmb();
@@ -173,9 +144,10 @@ u8 can_gpio_readreg( u8 reg ) {
 }
 
 //------------------------------------------------------------------------------
-//! @fn      can_gpio_writereg
-//!
 //! @brief   write content to register
+//!
+//! @param   [in]  reg:   Address of register
+//! @param   [in]  data:  Data to write in register
 //------------------------------------------------------------------------------
 void can_gpio_writereg( u8 reg, u8 data ) {
   u32 gpiodir;
@@ -193,16 +165,11 @@ void can_gpio_writereg( u8 reg, u8 data ) {
   iowrite32( gpiodir, base + GPIOFSEL(2) );
   wmb();
 
-#ifdef REV1
-  bufferSET  = ( reg & 0x07 ) <<  7;
-  bufferSET |= ( reg & 0xf8 ) << 18;
-#else
+  // Write register address
   bufferSET  = ( reg & 0x07 ) <<  7;
   bufferSET  = ( reg & 0x08 ) << 24;
   bufferSET |= ( reg & 0xf0 ) << 18;
-#endif
   bufferCLR  = ( ~(bufferSET) & gpioMask );
-  // Write register address
   iowrite32( ( 1 << ALE ), base + GPIOSET(0) );
   wmb();
   iowrite32( bufferSET, base + GPIOSET(0) );
@@ -213,14 +180,10 @@ void can_gpio_writereg( u8 reg, u8 data ) {
   iowrite32( ( 1 << nCS ) | ( 1 << nWR ), base + GPIOCLR(0) );
   wmb();
 
-#ifdef REV1
-  bufferSET  = ( data & 0x07 ) <<  7;
-  bufferSET |= ( data & 0xf8 ) << 18;
-#else
+  // Write data to register
   bufferSET  = ( data & 0x07 ) <<  7;
   bufferSET |= ( data & 0x08 ) << 24;
   bufferSET |= ( data & 0xf0 ) << 18;
-#endif
   bufferCLR  = ( ~(bufferSET) & gpioMask );
   iowrite32( bufferSET, base + GPIOSET(0) );
   iowrite32( bufferCLR, base + GPIOCLR(0) );
@@ -231,9 +194,11 @@ void can_gpio_writereg( u8 reg, u8 data ) {
 }
 
 //------------------------------------------------------------------------------
-//! @fn      can_gpio_init
-//!
 //! @brief   Initialize GPIOs
+//!
+//! @param   [out] dev:  address of can device descriptor
+//!
+//! @return  0 if no error occures, otherwise return errno
 //------------------------------------------------------------------------------
 int can_gpio_init( struct candev *dev ) {
   int err = 0;
@@ -291,26 +256,26 @@ int can_gpio_init( struct candev *dev ) {
 }
 
 //------------------------------------------------------------------------------
-//! @fn      can_gpio_req_irq
+//! @brief   Register IRQ Handler for device
 //!
-//! @brief   Registered IRQ Handler for device
+//! @param   [in]  dev:  address of can device descriptor
+//!
+//! @return  0 if no error occures, otherwise return errno
 //------------------------------------------------------------------------------
 int can_gpio_req_irq( struct candev *dev ) {
   return request_irq( dev->wIrq, can_sja1000_irqhandler, IRQF_TRIGGER_FALLING, "rpi_can", dev );
 }
 
 //------------------------------------------------------------------------------
-//! @fn      can_gpio_free_irq
-//!
 //! @brief   Free registered IRQ Handler
+//!
+//! @param   [in]  dev:  address of can device descriptor
 //------------------------------------------------------------------------------
 void can_gpio_free_irq( struct candev* dev ) {
   free_irq( dev->wIrq, dev );
 }
 
 //------------------------------------------------------------------------------
-//! @fn      can_gpio_free
-//!
 //! @brief   Free GPIOs
 //------------------------------------------------------------------------------
 void can_gpio_free( void ) {

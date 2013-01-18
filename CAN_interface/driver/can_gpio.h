@@ -19,7 +19,7 @@
 //!
 //! @brief   header for all parts of the GPIO hardware
 //!
-//! @version 1.0.0
+//! @version 2.0.0
 //******************************************************************************
 
 #ifndef __CAN_GPIO_H__

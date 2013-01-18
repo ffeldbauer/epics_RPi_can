@@ -97,7 +97,7 @@ asynStatus drvAsynWienerVme::readInt32( asynUser *pasynUser, epicsInt32 *value )
   const char *functionName = "readInt32";
 
   std::map<int, vme_cmd_t>::const_iterator it = cmds_.find( function );
-  if( it != cmdsUIn32D_.end() ) {
+  if( it != cmds_.end() ) {
     can_frame_t *pframe = new can_frame_t;
     pframe->can_id  = it->second.cmd | crate_id_ | CAN_RTR_FLAG;
     pframe->can_dlc = 8;

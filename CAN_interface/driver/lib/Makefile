@@ -10,7 +10,7 @@ LDNAME		= libpican.so
 SONAME		= $(LDNAME).1
 TARGET		= $(SONAME).0
 
-EXTRAINCDIRS 	= 
+EXTRAINCDIRS 	= ../
 EXTRALIBDIRS 	= 
 
 OPT 		= 

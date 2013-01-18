@@ -24,7 +24,7 @@
 //! @brief   Main part of driver. Defines fops, init and release funcitons
 //!          global defines to include in all files this module is made of
 //!
-//! @version 1.0.0
+//! @version 2.0.0
 //******************************************************************************
 
 #ifndef __CAN_MAIN_H__

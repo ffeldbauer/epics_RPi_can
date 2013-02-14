@@ -145,13 +145,15 @@ asynStatus drvAsynRPiCan::writeGenericPointer( asynUser *pasynUser, void *generi
 //! @param   [in]  maxChars        Size of value string
 //!
 //! @return  in case of no error occured asynSuccess is returned. Otherwise
-//!          asynError is returned. A error message is stored
+//!          asynError is returned. An error message is stored
 //!          in pasynUser->errorMessage.
 //------------------------------------------------------------------------------
 asynStatus drvAsynRPiCan::readOption( asynUser *pasynUser, const char *key,
                                       char *value, int maxChars ) {
   const char* functionName = "readOption";
+
   if( epicsStrCaseCmp( key, "bitrate" ) == 0 ) {
+    // Get current bitrate
     TPBTR0BTR1 ratix;
     int err = ioctl( fd_, CAN_GET_BITRATE, &ratix );
     if ( err ) {
@@ -160,11 +162,12 @@ asynStatus drvAsynRPiCan::readOption( asynUser *pasynUser, const char *key,
                      driverName, functionName, deviceName_, strerror( errno ) );
       return asynError;
     }
-    bitrate_ = ratix.dwBitRate;
     char dummy[10];
-    sprintf( dummy, "%u", bitrate_ );
+    sprintf( dummy, "%u", ratix.dwBitRate );
     strcpy(value, dummy);
+
   } else {
+    // unknown option
     epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize,
                    "%s:%s: Invalid option key '%s'",
                    driverName, functionName, key );
@@ -192,6 +195,7 @@ asynStatus drvAsynRPiCan::writeOption( asynUser *pasynUser, const char *key, con
   const char* functionName = "writeOption";
 
   if( epicsStrCaseCmp( key, "bitrate" ) == 0 ) {
+    // Change Bitrate
     int bitrate;
     if( sscanf( value, "%d", &bitrate ) != 1 ) {
       epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize,
@@ -207,14 +211,44 @@ asynStatus drvAsynRPiCan::writeOption( asynUser *pasynUser, const char *key, con
                      driverName, functionName, deviceName_, strerror( err ) );
       return asynError;
     }
-    bitrate_ = bitrate;
-  } else {
-      epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize,
-                     "%s:%s: Invalid option key '%s'",
-                     driverName, functionName, key );
-      return asynError;
-  }
 
+  } else if ( epicsStrCaseCmp( key, "addfilter" ) == 0 ) {
+    // Add new filter
+    epicsUInt32 FromID = 0;
+    epicsUInt32 ToID = 0;
+    epicsUInt8  MSGTYPE = 0;
+    if( sscanf( value, "%x:%x:%u", &FromID, &ToID, &MSGTYPE ) != 3 ) {
+      epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize,
+                     "Bad value");
+      return asynError;
+    }
+    TPMSGFILTER filter = { FromID, ToID, MSGTYPE };
+    int err = ioctl( fd_, CAN_MSG_FILTER, &filter );
+    if ( err ) {
+      epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize,
+                     "%s:%s: Could not change bitrate for interface '%s'. %s",
+                     driverName, functionName, deviceName_, strerror( err ) );
+      return asynError;
+    }
+
+  } else if ( epicsStrCaseCmp( key, "delfilter" ) == 0 ) {
+    // delete all existing filters
+    int err = ioctl( fd_, CAN_MSG_FILTER, NULL );
+    if ( err ) {
+      epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize,
+                     "%s:%s: Could not change bitrate for interface '%s'. %s",
+                     driverName, functionName, deviceName_, strerror( err ) );
+      return asynError;
+    }
+  
+  } else {
+    // unknown option
+    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize,
+                   "%s:%s: Invalid option key '%s'",
+                   driverName, functionName, key );
+    return asynError;
+  }
+  
   return asynSuccess;
 }
 
@@ -328,16 +362,7 @@ drvAsynRPiCan::drvAsynRPiCan( const char *portName, const char *ttyName )
              driverName, functionName, deviceName_, strerror( errno ) );
     return;
   }
-  
-  TPBTR0BTR1 ratix;
-  int err = ioctl( fd_, CAN_GET_BITRATE, &ratix );
-  if ( err ) {
-    fprintf( stderr, "\033[31;1m %s:%s: Could not read bitrate settings from interface '%s'. %s \033[0m \n",
-             driverName, functionName, deviceName_, strerror( errno ) );
-    return;
-  }
-  bitrate_ = ratix.dwBitRate;
-    
+      
 }
 
 //******************************************************************************

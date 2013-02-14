@@ -44,14 +44,14 @@
 
 // GPIOs used as address/data lines
 static struct gpio ADi[8] = {
-  {  7, GPIOF_OUT_INIT_LOW, "AD0" }, /* default to OFF */
-  {  8, GPIOF_OUT_INIT_LOW, "AD1" }, /* default to OFF */
-  {  9, GPIOF_OUT_INIT_LOW, "AD2" }, /* default to OFF */
-  { 27, GPIOF_OUT_INIT_LOW, "AD3" }, /* default to OFF */
-  { 22, GPIOF_OUT_INIT_LOW, "AD4" }, /* default to OFF */
-  { 23, GPIOF_OUT_INIT_LOW, "AD5" }, /* default to OFF */
-  { 24, GPIOF_OUT_INIT_LOW, "AD6" }, /* default to OFF */
-  { 25, GPIOF_OUT_INIT_LOW, "AD7" }  /* default to OFF */
+  {  7, GPIOF_OUT_INIT_LOW, "AD0" },
+  {  8, GPIOF_OUT_INIT_LOW, "AD1" },
+  {  9, GPIOF_OUT_INIT_LOW, "AD2" },
+  { 27, GPIOF_OUT_INIT_LOW, "AD3" }, // was 21 on rev1
+  { 22, GPIOF_OUT_INIT_LOW, "AD4" },
+  { 23, GPIOF_OUT_INIT_LOW, "AD5" },
+  { 24, GPIOF_OUT_INIT_LOW, "AD6" },
+  { 25, GPIOF_OUT_INIT_LOW, "AD7" }
 };
 
 // GPIOs used as ctrl lines
@@ -61,15 +61,15 @@ static u8 nWR = 10;
 static u8 nCS = 18;
 static u8 nIRQ = 4;
 
-// Masks for LEV/SET/CLRn registers to get GPIOs used as A/D lines
+// Masks for LEV/SET/CLR registers to get GPIOs used as A/D lines
 static const u32 gpioMaskL = (  7 <<  7 );
-static const u32 gpioMaskM = (  1 << 27 );
+static const u32 gpioMaskM = (  1 << 27 );  // was 21 on rev1
 static const u32 gpioMaskH = ( 15 << 22 );
-static const u32 gpioMask  = ( 15 << 22 ) | (  1 << 27 ) | (  7 <<  7 );
+static const u32 gpioMask  = (  7 <<  7 ) | ( 15 << 22 ) | (  1 << 27 ); // last one was 21 on rev1
 
 // Masks to switch direction of GPIOs used as A/D lines
-// FSEL(n) = 000 Input, = 001 Output
-// use InpMasks with & operator and OutMask with | operator
+// To switch pin g to input use GPIOFSEL( g/10 ) &= ~ ( 7 <<  (( g % 10 ) * 3 ) );
+// To switch pin g to output use GPIOFSEL( g/10 ) |= ( 1 <<  (( g % 10 ) * 3 ) );
 static const u32 gpioFSEL0_InpMask = ~( ( 7 << 21 ) | ( 7 << 24 ) | ( 7 << 27 ) );
 static const u32 gpioFSEL0_OutMask = ( 1 << 21 ) | ( 1 << 24 ) | ( 1 << 27 );
 static const u32 gpioFSEL2_InpMask = ~( ( 7 << 6 ) | ( 7 << 9 ) | ( 7 << 12 ) | ( 7 << 15 ) | ( 7 << 21 ) );
@@ -89,31 +89,28 @@ static void __iomem *base;
 //------------------------------------------------------------------------------
 u8 can_gpio_readreg( u8 reg ) {
   u8 data = 0;
-  u32 gpiodir;
   u32 buffer;
-  u32 bufferSET;
-  u32 bufferCLR;
 
   // Set AD0..7 to outoput
-  gpiodir = ioread32( base + GPIOFSEL(0) );
-  gpiodir &= gpioFSEL0_InpMask;
-  gpiodir |= gpioFSEL0_OutMask;
-  iowrite32( gpiodir, base + GPIOFSEL(0) );
-  gpiodir = ioread32( base + GPIOFSEL(2) );
-  gpiodir &= gpioFSEL2_InpMask;
-  gpiodir |= gpioFSEL2_OutMask;
-  iowrite32( gpiodir, base + GPIOFSEL(2) );
+  buffer  = ioread32( base + GPIOFSEL(0) );
+  buffer &= gpioFSEL0_InpMask;
+  buffer |= gpioFSEL0_OutMask;
+  iowrite32( buffer, base + GPIOFSEL(0) );
+  buffer  = ioread32( base + GPIOFSEL(2) );
+  buffer &= gpioFSEL2_InpMask;
+  buffer |= gpioFSEL2_OutMask;
+  iowrite32( buffer, base + GPIOFSEL(2) );
   wmb();
 
   // Write register address
-  bufferSET  = ( reg & 0x07 ) <<  7;
-  bufferSET |= ( reg & 0x08 ) << 24;
-  bufferSET |= ( reg & 0xf0 ) << 18;
-  bufferCLR  = ( ~(bufferSET) & gpioMask );
+  buffer  = ( reg & 0x07 ) <<  7;
+  buffer |= ( reg & 0x08 ) << 24;
+  buffer |= ( reg & 0xf0 ) << 18;
   iowrite32( ( 1 << ALE ), base + GPIOSET(0) );
   wmb();
-  iowrite32( bufferSET, base + GPIOSET(0) );
-  iowrite32( bufferCLR, base + GPIOCLR(0) );
+  iowrite32( buffer, base + GPIOSET(0) );
+  buffer = ~(buffer) & gpioMask;
+  iowrite32( buffer, base + GPIOCLR(0) );
   wmb();
 
   iowrite32( ( 1 << ALE ), base + GPIOCLR(0) );
@@ -121,12 +118,12 @@ u8 can_gpio_readreg( u8 reg ) {
   wmb();
 
   // Set AD0..7 to input
-  gpiodir = ioread32( base + GPIOFSEL(0) );
-  gpiodir &= gpioFSEL0_InpMask;
-  iowrite32( gpiodir, base + GPIOFSEL(0) );
-  gpiodir = ioread32( base + GPIOFSEL(2) );
-  gpiodir &= gpioFSEL2_InpMask;
-  iowrite32( gpiodir, base + GPIOFSEL(2) );
+  buffer  = ioread32( base + GPIOFSEL(0) );
+  buffer &= gpioFSEL0_InpMask;
+  iowrite32( buffer, base + GPIOFSEL(0) );
+  buffer  = ioread32( base + GPIOFSEL(2) );
+  buffer &= gpioFSEL2_InpMask;
+  iowrite32( buffer, base + GPIOFSEL(2) );
   wmb();
 
   udelay(1);
@@ -150,30 +147,28 @@ u8 can_gpio_readreg( u8 reg ) {
 //! @param   [in]  data:  Data to write in register
 //------------------------------------------------------------------------------
 void can_gpio_writereg( u8 reg, u8 data ) {
-  u32 gpiodir;
-  u32 bufferSET;
-  u32 bufferCLR;
+  u32 buffer;
 
   // Set AD0..7 to outoput
-  gpiodir = ioread32( base + GPIOFSEL(0) );
-  gpiodir &= gpioFSEL0_InpMask;
-  gpiodir |= gpioFSEL0_OutMask;
-  iowrite32( gpiodir, base + GPIOFSEL(0) );
-  gpiodir = ioread32( base + GPIOFSEL(2) );
-  gpiodir &= gpioFSEL2_InpMask;
-  gpiodir |= gpioFSEL2_OutMask;
-  iowrite32( gpiodir, base + GPIOFSEL(2) );
+  buffer  = ioread32( base + GPIOFSEL(0) );
+  buffer &= gpioFSEL0_InpMask;
+  buffer |= gpioFSEL0_OutMask;
+  iowrite32( buffer, base + GPIOFSEL(0) );
+  buffer  = ioread32( base + GPIOFSEL(2) );
+  buffer &= gpioFSEL2_InpMask;
+  buffer |= gpioFSEL2_OutMask;
+  iowrite32( buffer, base + GPIOFSEL(2) );
   wmb();
 
   // Write register address
-  bufferSET  = ( reg & 0x07 ) <<  7;
-  bufferSET  = ( reg & 0x08 ) << 24;
-  bufferSET |= ( reg & 0xf0 ) << 18;
-  bufferCLR  = ( ~(bufferSET) & gpioMask );
+  buffer  = ( reg & 0x07 ) <<  7;
+  buffer |= ( reg & 0x08 ) << 24;
+  buffer |= ( reg & 0xf0 ) << 18;
   iowrite32( ( 1 << ALE ), base + GPIOSET(0) );
   wmb();
-  iowrite32( bufferSET, base + GPIOSET(0) );
-  iowrite32( bufferCLR, base + GPIOCLR(0) );
+  iowrite32( buffer, base + GPIOSET(0) );
+  buffer = ~(buffer) & gpioMask;
+  iowrite32( buffer, base + GPIOCLR(0) );
   wmb();
 
   iowrite32( ( 1 << ALE ), base + GPIOCLR(0) );
@@ -181,12 +176,12 @@ void can_gpio_writereg( u8 reg, u8 data ) {
   wmb();
 
   // Write data to register
-  bufferSET  = ( data & 0x07 ) <<  7;
-  bufferSET |= ( data & 0x08 ) << 24;
-  bufferSET |= ( data & 0xf0 ) << 18;
-  bufferCLR  = ( ~(bufferSET) & gpioMask );
-  iowrite32( bufferSET, base + GPIOSET(0) );
-  iowrite32( bufferCLR, base + GPIOCLR(0) );
+  buffer  = ( data & 0x07 ) <<  7;
+  buffer |= ( data & 0x08 ) << 24;
+  buffer |= ( data & 0xf0 ) << 18;
+  iowrite32( buffer, base + GPIOSET(0) );
+  buffer  = ~(buffer) & gpioMask;
+  iowrite32( buffer & gpioMask, base + GPIOCLR(0) );
   wmb();
 
   iowrite32( ( 1 << nCS ) | ( 1 << nWR ), base + GPIOSET(0) );

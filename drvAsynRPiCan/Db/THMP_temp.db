@@ -58,6 +58,7 @@ record (sub, "PANDA:$(subsys):TEMP:$(sector):Tmom") {
   field (INPD, "$(P3)")
   field (INPE, "PANDA:$(subsys):TEMP:$(sector):Traw.VAL NPP")
 
+  # Archive and Monitor deadbands
   field (ADEL, "0.05")
   field (MDEL, "0.05")
 }

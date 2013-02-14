@@ -171,6 +171,8 @@ static int can_release( struct inode *inode, struct file *filep ) {
       // release the device itself
       sja1000_release( dev );
 
+      dev->nOpenPaths = 0;
+
       // release the interface depended irq, after this 'dev' is not valid
       can_gpio_free_irq( dev );
     }

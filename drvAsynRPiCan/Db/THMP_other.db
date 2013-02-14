@@ -52,6 +52,7 @@ record (ai, "PANDA:$(subsys):$(type):$(sector):$(valtype)mom") {
   field (LSV,  "$(lsv)")
   field (LLSV, "$(llsv)")
 
+  # Archive and Monitor deadbands
   field (ADEL, "0.05")
   field (MDEL, "0.05")
 }

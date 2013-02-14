@@ -70,7 +70,6 @@ class drvAsynRPiCan : public asynPortDriver {
   /* Our data */
   char *deviceName_;
   int   fd_;
-  int   bitrate_;
 };
 
 //#define NUM_RPICAN_PARAMS (&LAST_RPICAN_COMMAND - &FIRST_RPICAN_COMMAND + 1)

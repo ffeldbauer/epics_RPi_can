@@ -72,9 +72,24 @@
     <li>portName - The portName that is registered with asynManager.</li>
     <li>canName - The name of the local CAN interface (e.g. "/dev/can", "COM1").</li>
   </ul>
-  <p>This driver uses asynOption to set the bitrate for CAN messages in bit/s.<br />
-      Allowed values are: 5000, 10000, 20000, 50000, 100000, 125000, 250000, 500000, and 1000000</p>
-  <pre>  asynSetOption( "portName", "bitrate", bitrate )</pre>
+  <p>This driver uses asynOption to set the bitrate for CAN messages in bit/s or to add filters for received
+    CAN frames.</p>
+    <pre>  asynSetOption( "portName", "key", "value" )</pre>
+    <table><thead>
+        <th>Key</th><th>Description</th>
+        </thead>
+      <tbody>
+        <tr><td>bitrate</td>Change the bitrate of the CAN interface in bit/s<br/>
+          Allowed values are: 5000, 10000, 20000, 50000, 100000, 125000, 250000, 500000, and 1000000
+          </td></tr>
+        <tr><td>addfilter</td>Add a filter for received CAN messages<br/>
+          The value should be of form "FromID:ToID:EXT:RTR"<br/>
+          Multiple filters can be applied at the same time.
+          </td></tr>
+        <tr><td>delfilter</td>Delete all filters for received CAN messages.<br/>
+          The value string is not needed by this option.
+          </td></tr>
+      </tbody>
 
   <hr />
   <div style="text-align: center">

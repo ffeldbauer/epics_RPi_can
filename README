@@ -26,6 +26,7 @@ Currently these AsynPortDrivers support
 - Wiener VME crate remote control
 - Temperature and Humidity Monitoring board for PANDA (THMP)
 - PANDA-EMC light pulser
+- TMCM142 1-axis stepper controller/driver (via CAN)
 
 To use the AsynPortDrivers you will need
 - EPICS base (http://www.aps.anl.gov/epics/)

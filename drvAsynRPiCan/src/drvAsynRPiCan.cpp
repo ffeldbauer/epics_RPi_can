@@ -226,7 +226,7 @@ asynStatus drvAsynRPiCan::writeOption( asynUser *pasynUser, const char *key, con
     int err = ioctl( fd_, CAN_MSG_FILTER, &filter );
     if ( err ) {
       epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize,
-                     "%s:%s: Could not change bitrate for interface '%s'. %s",
+                     "%s:%s: Could not add filter for interface '%s'. %s",
                      driverName, functionName, deviceName_, strerror( err ) );
       return asynError;
     }
@@ -236,7 +236,7 @@ asynStatus drvAsynRPiCan::writeOption( asynUser *pasynUser, const char *key, con
     int err = ioctl( fd_, CAN_MSG_FILTER, NULL );
     if ( err ) {
       epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize,
-                     "%s:%s: Could not change bitrate for interface '%s'. %s",
+                     "%s:%s: Could not delete filters for interface '%s'. %s",
                      driverName, functionName, deviceName_, strerror( err ) );
       return asynError;
     }

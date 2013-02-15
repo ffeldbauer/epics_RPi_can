@@ -88,7 +88,8 @@ asynStatus drvAsynTmcm142::readInt32( asynUser *pasynUser, epicsInt32 *value ) {
     
   status = getAddress( pasynUser, &addr ); if( status ) return status;
 
-  if ( function == P_STATUS ) {
+  std::map<int, epicsUInt8>::const_iterator it = cmds_r_.find( function );
+  if( it == cmds_r_.end() ) {
     status = (asynStatus) getIntegerParam( addr, function, value );
     if( status ) 
       epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
@@ -100,9 +101,6 @@ asynStatus drvAsynTmcm142::readInt32( asynUser *pasynUser, epicsInt32 *value ) {
                  driverName, functionName, function, *value );
     return status;
   }
-
-  std::map<int, epicsUInt8>::const_iterator it = cmds_r_.find( function );
-  if( it == cmds_r_.end() ) return asynError;
   
   can_frame_t *pframe = new can_frame_t;
   pframe->can_id = can_id_w_;
@@ -131,14 +129,14 @@ asynStatus drvAsynTmcm142::readInt32( asynUser *pasynUser, epicsInt32 *value ) {
   }
   if ( ( pframe->can_id  != can_id_r_ ) ||
        ( pframe->can_dlc != 7 ) ||
-       ( pframe->data[0] != 2 ) || // ??
+       ( pframe->data[0] != ( can_id_w_ & 0xff ) ) ||
        ( pframe->data[2] != it->second ) 
        ){
     epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
                    "\033[31;1m%s:%s:%s: function=%d, Mismatch in reply.\nGot %08x %d %02x %02x %02x where %08x 7 %02x XX %02x was expected\033[0m", 
                    driverName, deviceName_, functionName, function,
                    pframe->can_id, pframe->can_dlc, pframe->data[0], pframe->data[1], pframe->data[2],
-                   can_id_r_, 2, it->second );
+                   can_id_r_, ( can_id_w_ & 0xff ), it->second );
     return asynError;
   }
   // Update status
@@ -216,14 +214,14 @@ asynStatus drvAsynTmcm142::writeInt32( asynUser *pasynUser, epicsInt32 value ) {
   }
   if ( ( pframe->can_id  != can_id_r_ ) ||
        ( pframe->can_dlc != 7 ) ||
-       ( pframe->data[0] != 2 ) || // ??
+       ( pframe->data[0] != ( can_id_w_ & 0xff ) ) ||
        ( pframe->data[2] != it->second ) 
        ){
     epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
                    "\033[31;1m%s:%s:%s: function=%d, Mismatch in reply.\nGot %08x %d %02x %02x %02x where %08x 7 %02x XX %02x was expected\033[0m", 
                    driverName, deviceName_, functionName, function,
                    pframe->can_id, pframe->can_dlc, pframe->data[0], pframe->data[1], pframe->data[2],
-                   can_id_r_, 2, it->second );
+                   can_id_r_, ( can_id_w_ & 0xff ), it->second );
     return asynError;
   }
   // update status
@@ -232,7 +230,7 @@ asynStatus drvAsynTmcm142::writeInt32( asynUser *pasynUser, epicsInt32 value ) {
 
   // update value of parameter
   status = (asynStatus)setIntegerParam( addr, function, value );
-  status = (asynStatus) callParamCallbacks( addr, addr );
+  status = (asynStatus)callParamCallbacks( addr, addr );
     
   if( status ) 
     epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
@@ -274,40 +272,39 @@ drvAsynTmcm142::drvAsynTmcm142( const char *portName, const char *CanPort,
   can_id_w_    = can_id_w;
   can_id_r_    = can_id_r;
   
-  createParam( P_TMCM142_ROR_STRING,    asynParamInt32,         &P_ROR );
-  createParam( P_TMCM142_ROL_STRING,    asynParamInt32,         &P_ROL );
-  createParam( P_TMCM142_MST_STRING,    asynParamInt32,         &P_MST );
-  createParam( P_TMCM142_MVP_STRING,    asynParamInt32,         &P_MVP );
-  createParam( P_TMCM142_SAP_STRING,    asynParamInt32,         &P_SAP );
-  createParam( P_TMCM142_GAP_STRING,    asynParamInt32,         &P_GAP );
-  createParam( P_TMCM142_STAP_STRING,   asynParamInt32,         &P_STAP );
-  createParam( P_TMCM142_RSAP_STRING,   asynParamInt32,         &P_RSAP );
-  createParam( P_TMCM142_SGP_STRING,    asynParamInt32,         &P_SGP );
-  createParam( P_TMCM142_GGP_STRING,    asynParamInt32,         &P_GGP );
-  createParam( P_TMCM142_STGP_STRING,   asynParamInt32,         &P_STGP );
-  createParam( P_TMCM142_RSGP_STRING,   asynParamInt32,         &P_RSGP );
-  createParam( P_TMCM142_RFS_STRING,    asynParamInt32,         &P_RFS );
-  createParam( P_TMCM142_SIO_STRING,    asynParamInt32,         &P_SIO );
-  createParam( P_TMCM142_GIO_STRING,    asynParamInt32,         &P_GIO );
-  createParam( P_TMCM142_CALC_STRING,   asynParamInt32,         &P_CALC );
-  createParam( P_TMCM142_COMP_STRING,   asynParamInt32,         &P_COMP );
-  createParam( P_TMCM142_JC_STRING,     asynParamInt32,         &P_JC );
-  createParam( P_TMCM142_JA_STRING,     asynParamInt32,         &P_JA );
-  createParam( P_TMCM142_CSUB_STRING,   asynParamInt32,         &P_CSUB );
-  createParam( P_TMCM142_RSUB_STRING,   asynParamInt32,         &P_RSUB );
-  createParam( P_TMCM142_WAIT_STRING,   asynParamInt32,         &P_WAIT );
-  createParam( P_TMCM142_STOP_STRING,   asynParamInt32,         &P_STOP );
-  createParam( P_TMCM142_SCO_STRING,    asynParamInt32,         &P_SCO );
-  createParam( P_TMCM142_CCO_STRING,    asynParamInt32,         &P_CCO );
-  createParam( P_TMCM142_GCO_STRING,    asynParamInt32,         &P_GCO );
-  createParam( P_TMCM142_CALCX_STRING,  asynParamInt32,         &P_CALCX );
-  createParam( P_TMCM142_AAP_STRING,    asynParamInt32,         &P_AAP );
-  createParam( P_TMCM142_AGP_STRING,    asynParamInt32,         &P_AGP );
-  createParam( P_TMCM142_CLE_STRING,    asynParamInt32,         &P_CLE );
-  createParam( P_TMCM142_ACO_STRING,    asynParamInt32,         &P_ACO );
+  createParam( P_TMCM142_ROR_STRING,    asynParamInt32,         &P_ROR );  // rotate right
+  createParam( P_TMCM142_ROL_STRING,    asynParamInt32,         &P_ROL );  // rotate left
+  createParam( P_TMCM142_MST_STRING,    asynParamInt32,         &P_MST );  // motor stop
+  createParam( P_TMCM142_MVP_STRING,    asynParamInt32,         &P_MVP );  // move to position
+  createParam( P_TMCM142_SAP_STRING,    asynParamInt32,         &P_SAP );  // set axis parameter
+  createParam( P_TMCM142_GAP_STRING,    asynParamInt32,         &P_GAP );  // get axis parameter
+  createParam( P_TMCM142_STAP_STRING,   asynParamInt32,         &P_STAP ); // store axis parameter
+  createParam( P_TMCM142_RSAP_STRING,   asynParamInt32,         &P_RSAP ); // restore axis parameter
+  createParam( P_TMCM142_SGP_STRING,    asynParamInt32,         &P_SGP );  // set global parameter
+  createParam( P_TMCM142_GGP_STRING,    asynParamInt32,         &P_GGP );  // get global parameter
+  createParam( P_TMCM142_STGP_STRING,   asynParamInt32,         &P_STGP ); // store global parameter
+  createParam( P_TMCM142_RSGP_STRING,   asynParamInt32,         &P_RSGP ); // restore global parameter
+  createParam( P_TMCM142_RFS_STRING,    asynParamInt32,         &P_RFS );  // reference search
+  createParam( P_TMCM142_SIO_STRING,    asynParamInt32,         &P_SIO );  // set digital io
+  createParam( P_TMCM142_GIO_STRING,    asynParamInt32,         &P_GIO );  // get digital io
+  createParam( P_TMCM142_CALC_STRING,   asynParamInt32,         &P_CALC ); // process accumulator
+  createParam( P_TMCM142_COMP_STRING,   asynParamInt32,         &P_COMP ); // compare accumulator & value
+  createParam( P_TMCM142_JC_STRING,     asynParamInt32,         &P_JC );   // jump conditional
+  createParam( P_TMCM142_JA_STRING,     asynParamInt32,         &P_JA );   // jump absolute
+  createParam( P_TMCM142_CSUB_STRING,   asynParamInt32,         &P_CSUB ); // call subroutine
+  createParam( P_TMCM142_RSUB_STRING,   asynParamInt32,         &P_RSUB ); // return from subroutine
+  createParam( P_TMCM142_WAIT_STRING,   asynParamInt32,         &P_WAIT ); // wait with further program execution
+  createParam( P_TMCM142_STOP_STRING,   asynParamInt32,         &P_STOP ); // stop program execution
+  createParam( P_TMCM142_SCO_STRING,    asynParamInt32,         &P_SCO );  // set coordinate
+  createParam( P_TMCM142_GCO_STRING,    asynParamInt32,         &P_GCO );  // get coordinate
+  createParam( P_TMCM142_CCO_STRING,    asynParamInt32,         &P_CCO );  // caputre coordinate
+  createParam( P_TMCM142_CALCX_STRING,  asynParamInt32,         &P_CALCX ); // process accumulator & X-register
+  createParam( P_TMCM142_AAP_STRING,    asynParamInt32,         &P_AAP );  // accumulator to axis parameter
+  createParam( P_TMCM142_AGP_STRING,    asynParamInt32,         &P_AGP );  // accumulator to global parameter
+  createParam( P_TMCM142_CLE_STRING,    asynParamInt32,         &P_CLE );  // clear error flags
+  createParam( P_TMCM142_ACO_STRING,    asynParamInt32,         &P_ACO );  // accumulator to coordinate
 
   createParam( P_TMCM142_STATUS_STRING, asynParamInt32,         &P_STATUS );
-
 
   cmds_w_.insert( std::make_pair( P_ROR, 1 ) );
   cmds_w_.insert( std::make_pair( P_ROL, 2 ) );
@@ -349,393 +346,64 @@ drvAsynTmcm142::drvAsynTmcm142( const char *portName, const char *CanPort,
     return;
   }
 
-
-  // initialize axis and global parameters
-  can_frame_t *pframe = new can_frame_t;
-  pframe->can_id = can_id_w_;
-  pframe->can_dlc = 7;
-  pframe->data[0] = 6; // Get axis parameter
-  pframe->data[1] = 1; // actual position
-  pframe->data[2] = 0;
-  pframe->data[3] = 0;
-  pframe->data[4] = 0;
-  pframe->data[5] = 0;
-  pframe->data[6] = 0;
-
-  status = pasynGenericPointerSyncIO->writeRead( pAsynUserGenericPointer_, pframe, pframe, 1. );
-  if ( asynTimeout == status ){
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "%s:%s:%s: status=%d, function=%d, No reply from device within %f s", 
-                   driverName, deviceName_, functionName, status, P_GAP, 1. );
-    return;
+  // These Axis parameters will be initalized:
+  epicsUInt8 addr[] = { 1,  // actual position
+                        4,  // max positioning speed
+                        5,  // max acceleration and deceleration
+                        12, // right limit switch disable
+                        13, // left limit switch disable
+                        14, // switch mode
+                        15, // stop deceleration
+                        27  // microstep resolution
+  };
+  for ( int i = 0; i < 8; i++ ){
+    // initialize axis and global parameters
+    can_frame_t *pframe = new can_frame_t;
+    pframe->can_id = can_id_w_;
+    pframe->can_dlc = 7;
+    pframe->data[0] = 6; // Get axis parameter
+    pframe->data[1] = addr[i];
+    pframe->data[2] = 0;
+    pframe->data[3] = 0;
+    pframe->data[4] = 0;
+    pframe->data[5] = 0;
+    pframe->data[6] = 0;
+    
+    status = pasynGenericPointerSyncIO->writeRead( pAsynUserGenericPointer_, pframe, pframe, 1. );
+    if ( asynTimeout == status ){
+      fprintf( stderr, "%s:%s:%s: status=%d, function=%d, No reply from device within %f s\n", 
+               driverName, deviceName_, functionName, status, P_GAP, 1. );
+      return;
+    }
+    if ( status ){
+      fprintf( stderr, "%s:%s:%s: status=%d, function=%d %s\n", 
+               driverName, deviceName_, functionName, status, P_GAP,
+               pAsynUserGenericPointer_->errorMessage );
+      return;
+    }
+    if ( ( pframe->can_id  != can_id_r_ ) ||
+         ( pframe->can_dlc != 7 ) ||
+         ( pframe->data[0] != ( can_id_w_ & 0xff ) ) ||
+         ( pframe->data[2] != 6 ) 
+         ){
+      fprintf( stderr, "\033[31;1m%s:%s:%s: function=%d, Mismatch in reply.\nGot %08x %d %02x %02x %02x where %08x 7 %02x XX %02x was expected\033[0m\n", 
+               driverName, deviceName_, functionName, function,
+               pframe->can_id, pframe->can_dlc, pframe->data[0], pframe->data[1], pframe->data[2],
+               can_id_r_, ( can_id_w_ & 0xff ), 6 );
+      return;
+    }
+    // Update status
+    // status = (asynStatus) setIntegerParam( 0, P_STATUS, pframe->data[1] );
+    
+    // update value of parameter
+    split_t myValue;
+    myValue.val8[3] = pframe->data[3];
+    myValue.val8[2] = pframe->data[4];
+    myValue.val8[1] = pframe->data[5];
+    myValue.val8[0] = pframe->data[6];
+    status = (asynStatus) setIntegerParam( addr[i], P_SAP, myValue.val32 );
+    status = (asynStatus) setIntegerParam( addr[i], P_GAP, myValue.val32 );
   }
-  if ( status ){
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "%s:%s:%s: status=%d, function=%d %s", 
-                   driverName, deviceName_, functionName, status, P_GAP,
-                   pAsynUserGenericPointer_->errorMessage );
-    return;
-  }
-  if ( ( pframe->can_id  != can_id_r_ ) ||
-       ( pframe->can_dlc != 7 ) ||
-       ( pframe->data[0] != 2 ) || // ??
-       ( pframe->data[2] != 6 ) 
-       ){
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "\033[31;1m%s:%s:%s: function=%d, Mismatch in reply.\nGot %08x %d %02x %02x %02x where %08x 7 %02x XX %02x was expected\033[0m", 
-                   driverName, deviceName_, functionName, function,
-                   pframe->can_id, pframe->can_dlc, pframe->data[0], pframe->data[1], pframe->data[2],
-                   can_id_r_, 2, 6 );
-    return asynError;
-  }
-  // Update status
-  status = (asynStatus) setIntegerParam( 0, P_STATUS, pframe->data[1] );
-  
-  // update value of parameter
-  split_t myValue;
-  myValue.val8[3] = pframe->data[3];
-  myValue.val8[2] = pframe->data[4];
-  myValue.val8[1] = pframe->data[5];
-  myValue.val8[0] = pframe->data[6];
-  status = (asynStatus) setIntegerParam( 1, P_SAP, myValue.val32 );
-  status = (asynStatus) setIntegerParam( 1, P_GAP, myValue.val32 );
-
-  pframe->can_id = can_id_w_;
-  pframe->can_dlc = 7;
-  pframe->data[0] = 6; // Get axis parameter
-  pframe->data[1] = 4; // max positioning speed
-  pframe->data[2] = 0;
-  pframe->data[3] = 0;
-  pframe->data[4] = 0;
-  pframe->data[5] = 0;
-  pframe->data[6] = 0;
-
-  status = pasynGenericPointerSyncIO->writeRead( pAsynUserGenericPointer_, pframe, pframe, 1. );
-  if ( asynTimeout == status ){
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "%s:%s:%s: status=%d, function=%d, No reply from device within %f s", 
-                   driverName, deviceName_, functionName, status, P_GAP, 1. );
-    return;
-  }
-  if ( status ){
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "%s:%s:%s: status=%d, function=%d %s", 
-                   driverName, deviceName_, functionName, status, P_GAP,
-                   pAsynUserGenericPointer_->errorMessage );
-    return;
-  }
-  if ( ( pframe->can_id  != can_id_r_ ) ||
-       ( pframe->can_dlc != 7 ) ||
-       ( pframe->data[0] != 2 ) || // ??
-       ( pframe->data[2] != 6 ) 
-       ){
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "\033[31;1m%s:%s:%s: function=%d, Mismatch in reply.\nGot %08x %d %02x %02x %02x where %08x 7 %02x XX %02x was expected\033[0m", 
-                   driverName, deviceName_, functionName, function,
-                   pframe->can_id, pframe->can_dlc, pframe->data[0], pframe->data[1], pframe->data[2],
-                   can_id_r_, 2, 6 );
-    return asynError;
-  }
-  // Update status
-  status = (asynStatus) setIntegerParam( 0, P_STATUS, pframe->data[1] );
-  
-  // update value of parameter
-  split_t myValue;
-  myValue.val8[3] = pframe->data[3];
-  myValue.val8[2] = pframe->data[4];
-  myValue.val8[1] = pframe->data[5];
-  myValue.val8[0] = pframe->data[6];
-  status = (asynStatus) setIntegerParam( 4, P_SAP, myValue.val32 );
-  status = (asynStatus) setIntegerParam( 4, P_GAP, myValue.val32 );
-
-  pframe->can_id = can_id_w_;
-  pframe->can_dlc = 7;
-  pframe->data[0] = 6; // Get axis parameter
-  pframe->data[1] = 5; // max acceleration and deceleration
-  pframe->data[2] = 0;
-  pframe->data[3] = 0;
-  pframe->data[4] = 0;
-  pframe->data[5] = 0;
-  pframe->data[6] = 0;
-
-  status = pasynGenericPointerSyncIO->writeRead( pAsynUserGenericPointer_, pframe, pframe, 1. );
-  if ( asynTimeout == status ){
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "%s:%s:%s: status=%d, function=%d, No reply from device within %f s", 
-                   driverName, deviceName_, functionName, status, P_GAP, 1. );
-    return;
-  }
-  if ( status ){
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "%s:%s:%s: status=%d, function=%d %s", 
-                   driverName, deviceName_, functionName, status, P_GAP,
-                   pAsynUserGenericPointer_->errorMessage );
-    return;
-  }
-  if ( ( pframe->can_id  != can_id_r_ ) ||
-       ( pframe->can_dlc != 7 ) ||
-       ( pframe->data[0] != 2 ) || // ??
-       ( pframe->data[2] != 6 ) 
-       ){
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "\033[31;1m%s:%s:%s: function=%d, Mismatch in reply.\nGot %08x %d %02x %02x %02x where %08x 7 %02x XX %02x was expected\033[0m", 
-                   driverName, deviceName_, functionName, function,
-                   pframe->can_id, pframe->can_dlc, pframe->data[0], pframe->data[1], pframe->data[2],
-                   can_id_r_, 2, 6 );
-    return asynError;
-  }
-  // Update status
-  status = (asynStatus) setIntegerParam( 0, P_STATUS, pframe->data[1] );
-  
-  // update value of parameter
-  split_t myValue;
-  myValue.val8[3] = pframe->data[3];
-  myValue.val8[2] = pframe->data[4];
-  myValue.val8[1] = pframe->data[5];
-  myValue.val8[0] = pframe->data[6];
-  status = (asynStatus) setIntegerParam( 5, P_SAP, myValue.val32 );
-  status = (asynStatus) setIntegerParam( 5, P_GAP, myValue.val32 );
-
-  pframe->can_id = can_id_w_;
-  pframe->can_dlc = 7;
-  pframe->data[0] = 6;  // Get axis parameter
-  pframe->data[1] = 12; // right limit switch disable
-  pframe->data[2] = 0;
-  pframe->data[3] = 0;
-  pframe->data[4] = 0;
-  pframe->data[5] = 0;
-  pframe->data[6] = 0;
-
-  status = pasynGenericPointerSyncIO->writeRead( pAsynUserGenericPointer_, pframe, pframe, 1. );
-  if ( asynTimeout == status ){
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "%s:%s:%s: status=%d, function=%d, No reply from device within %f s", 
-                   driverName, deviceName_, functionName, status, P_GAP, 1. );
-    return;
-  }
-  if ( status ){
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "%s:%s:%s: status=%d, function=%d %s", 
-                   driverName, deviceName_, functionName, status, P_GAP,
-                   pAsynUserGenericPointer_->errorMessage );
-    return;
-  }
-  if ( ( pframe->can_id  != can_id_r_ ) ||
-       ( pframe->can_dlc != 7 ) ||
-       ( pframe->data[0] != 2 ) || // ??
-       ( pframe->data[2] != 6 ) 
-       ){
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "\033[31;1m%s:%s:%s: function=%d, Mismatch in reply.\nGot %08x %d %02x %02x %02x where %08x 7 %02x XX %02x was expected\033[0m", 
-                   driverName, deviceName_, functionName, function,
-                   pframe->can_id, pframe->can_dlc, pframe->data[0], pframe->data[1], pframe->data[2],
-                   can_id_r_, 2, 6 );
-    return asynError;
-  }
-  // Update status
-  status = (asynStatus) setIntegerParam( 0, P_STATUS, pframe->data[1] );
-  
-  // update value of parameter
-  split_t myValue;
-  myValue.val8[3] = pframe->data[3];
-  myValue.val8[2] = pframe->data[4];
-  myValue.val8[1] = pframe->data[5];
-  myValue.val8[0] = pframe->data[6];
-  status = (asynStatus) setIntegerParam( 12, P_SAP, myValue.val32 );
-  status = (asynStatus) setIntegerParam( 12, P_GAP, myValue.val32 );
-
-  pframe->can_id = can_id_w_;
-  pframe->can_dlc = 7;
-  pframe->data[0] = 6;  // Get axis parameter
-  pframe->data[1] = 13; // left limit switch disable
-  pframe->data[2] = 0;
-  pframe->data[3] = 0;
-  pframe->data[4] = 0;
-  pframe->data[5] = 0;
-  pframe->data[6] = 0;
-
-  status = pasynGenericPointerSyncIO->writeRead( pAsynUserGenericPointer_, pframe, pframe, 1. );
-  if ( asynTimeout == status ){
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "%s:%s:%s: status=%d, function=%d, No reply from device within %f s", 
-                   driverName, deviceName_, functionName, status, P_GAP, 1. );
-    return;
-  }
-  if ( status ){
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "%s:%s:%s: status=%d, function=%d %s", 
-                   driverName, deviceName_, functionName, status, P_GAP,
-                   pAsynUserGenericPointer_->errorMessage );
-    return;
-  }
-  if ( ( pframe->can_id  != can_id_r_ ) ||
-       ( pframe->can_dlc != 7 ) ||
-       ( pframe->data[0] != 2 ) || // ??
-       ( pframe->data[2] != 6 ) 
-       ){
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "\033[31;1m%s:%s:%s: function=%d, Mismatch in reply.\nGot %08x %d %02x %02x %02x where %08x 7 %02x XX %02x was expected\033[0m", 
-                   driverName, deviceName_, functionName, function,
-                   pframe->can_id, pframe->can_dlc, pframe->data[0], pframe->data[1], pframe->data[2],
-                   can_id_r_, 2, 6 );
-    return asynError;
-  }
-  // Update status
-  status = (asynStatus) setIntegerParam( 0, P_STATUS, pframe->data[1] );
-  
-  // update value of parameter
-  split_t myValue;
-  myValue.val8[3] = pframe->data[3];
-  myValue.val8[2] = pframe->data[4];
-  myValue.val8[1] = pframe->data[5];
-  myValue.val8[0] = pframe->data[6];
-  status = (asynStatus) setIntegerParam( 13, P_SAP, myValue.val32 );
-  status = (asynStatus) setIntegerParam( 13, P_GAP, myValue.val32 );
-
-  pframe->can_id = can_id_w_;
-  pframe->can_dlc = 7;
-  pframe->data[0] = 6;  // Get axis parameter
-  pframe->data[1] = 14; // switch mode
-  pframe->data[2] = 0;
-  pframe->data[3] = 0;
-  pframe->data[4] = 0;
-  pframe->data[5] = 0;
-  pframe->data[6] = 0;
-
-  status = pasynGenericPointerSyncIO->writeRead( pAsynUserGenericPointer_, pframe, pframe, 1. );
-  if ( asynTimeout == status ){
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "%s:%s:%s: status=%d, function=%d, No reply from device within %f s", 
-                   driverName, deviceName_, functionName, status, P_GAP, 1. );
-    return;
-  }
-  if ( status ){
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "%s:%s:%s: status=%d, function=%d %s", 
-                   driverName, deviceName_, functionName, status, P_GAP,
-                   pAsynUserGenericPointer_->errorMessage );
-    return;
-  }
-  if ( ( pframe->can_id  != can_id_r_ ) ||
-       ( pframe->can_dlc != 7 ) ||
-       ( pframe->data[0] != 2 ) || // ??
-       ( pframe->data[2] != 6 ) 
-       ){
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "\033[31;1m%s:%s:%s: function=%d, Mismatch in reply.\nGot %08x %d %02x %02x %02x where %08x 7 %02x XX %02x was expected\033[0m", 
-                   driverName, deviceName_, functionName, function,
-                   pframe->can_id, pframe->can_dlc, pframe->data[0], pframe->data[1], pframe->data[2],
-                   can_id_r_, 2, 6 );
-    return asynError;
-  }
-  // Update status
-  status = (asynStatus) setIntegerParam( 0, P_STATUS, pframe->data[1] );
-  
-  // update value of parameter
-  split_t myValue;
-  myValue.val8[3] = pframe->data[3];
-  myValue.val8[2] = pframe->data[4];
-  myValue.val8[1] = pframe->data[5];
-  myValue.val8[0] = pframe->data[6];
-  status = (asynStatus) setIntegerParam( 14, P_SAP, myValue.val32 );
-  status = (asynStatus) setIntegerParam( 14, P_GAP, myValue.val32 );
-
-  pframe->can_id = can_id_w_;
-  pframe->can_dlc = 7;
-  pframe->data[0] = 6;  // Get axis parameter
-  pframe->data[1] = 15; // stop deceleration
-  pframe->data[2] = 0;
-  pframe->data[3] = 0;
-  pframe->data[4] = 0;
-  pframe->data[5] = 0;
-  pframe->data[6] = 0;
-
-  status = pasynGenericPointerSyncIO->writeRead( pAsynUserGenericPointer_, pframe, pframe, 1. );
-  if ( asynTimeout == status ){
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "%s:%s:%s: status=%d, function=%d, No reply from device within %f s", 
-                   driverName, deviceName_, functionName, status, P_GAP, 1. );
-    return;
-  }
-  if ( status ){
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "%s:%s:%s: status=%d, function=%d %s", 
-                   driverName, deviceName_, functionName, status, P_GAP,
-                   pAsynUserGenericPointer_->errorMessage );
-    return;
-  }
-  if ( ( pframe->can_id  != can_id_r_ ) ||
-       ( pframe->can_dlc != 7 ) ||
-       ( pframe->data[0] != 2 ) || // ??
-       ( pframe->data[2] != 6 ) 
-       ){
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "\033[31;1m%s:%s:%s: function=%d, Mismatch in reply.\nGot %08x %d %02x %02x %02x where %08x 7 %02x XX %02x was expected\033[0m", 
-                   driverName, deviceName_, functionName, function,
-                   pframe->can_id, pframe->can_dlc, pframe->data[0], pframe->data[1], pframe->data[2],
-                   can_id_r_, 2, 6 );
-    return asynError;
-  }
-  // Update status
-  status = (asynStatus) setIntegerParam( 0, P_STATUS, pframe->data[1] );
-  
-  // update value of parameter
-  split_t myValue;
-  myValue.val8[3] = pframe->data[3];
-  myValue.val8[2] = pframe->data[4];
-  myValue.val8[1] = pframe->data[5];
-  myValue.val8[0] = pframe->data[6];
-  status = (asynStatus) setIntegerParam( 15, P_SAP, myValue.val32 );
-  status = (asynStatus) setIntegerParam( 15, P_GAP, myValue.val32 );
-
-  pframe->can_id = can_id_w_;
-  pframe->can_dlc = 7;
-  pframe->data[0] = 6;  // Get axis parameter
-  pframe->data[1] = 27; // microstep resolution
-  pframe->data[2] = 0;
-  pframe->data[3] = 0;
-  pframe->data[4] = 0;
-  pframe->data[5] = 0;
-  pframe->data[6] = 0;
-
-  status = pasynGenericPointerSyncIO->writeRead( pAsynUserGenericPointer_, pframe, pframe, 1. );
-  if ( asynTimeout == status ){
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "%s:%s:%s: status=%d, function=%d, No reply from device within %f s", 
-                   driverName, deviceName_, functionName, status, P_GAP, 1. );
-    return;
-  }
-  if ( status ){
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "%s:%s:%s: status=%d, function=%d %s", 
-                   driverName, deviceName_, functionName, status, P_GAP,
-                   pAsynUserGenericPointer_->errorMessage );
-    return;
-  }
-  if ( ( pframe->can_id  != can_id_r_ ) ||
-       ( pframe->can_dlc != 7 ) ||
-       ( pframe->data[0] != 2 ) || // ??
-       ( pframe->data[2] != 6 ) 
-       ){
-    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize, 
-                   "\033[31;1m%s:%s:%s: function=%d, Mismatch in reply.\nGot %08x %d %02x %02x %02x where %08x 7 %02x XX %02x was expected\033[0m", 
-                   driverName, deviceName_, functionName, function,
-                   pframe->can_id, pframe->can_dlc, pframe->data[0], pframe->data[1], pframe->data[2],
-                   can_id_r_, 2, 6 );
-    return asynError;
-  }
-  // Update status
-  status = (asynStatus) setIntegerParam( 0, P_STATUS, pframe->data[1] );
-  
-  // update value of parameter
-  split_t myValue;
-  myValue.val8[3] = pframe->data[3];
-  myValue.val8[2] = pframe->data[4];
-  myValue.val8[1] = pframe->data[5];
-  myValue.val8[0] = pframe->data[6];
-  status = (asynStatus) setIntegerParam( 27, P_SAP, myValue.val32 );
-  status = (asynStatus) setIntegerParam( 27, P_GAP, myValue.val32 );
-
 }
 
 //******************************************************************************

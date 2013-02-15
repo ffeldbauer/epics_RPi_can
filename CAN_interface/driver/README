@@ -18,7 +18,9 @@ This is the kernel module of the CAN bus interface
 for the Raspberry Pi Computer developed by the PANDA
 Collaboration.
 
-One of the used GPIOs has changed from revision 1 to revision 2
-of the Raspberry Pi Computer ( GPIO 21 <-> GPIO 27 ).
-By default the driver assumes revision 2. If the driver
-should be compiled for revision 1 use compiler flag "-DREV1"
+The kernel module is heavily based on the kernel module
+from Peak Systems, also published under the GNU General Public License.
+
+The kernel module is for revision 2 of the Raspberry Pi Computer.
+If you are using revision 1, you have to change the used GPIOs and
+corresponding masks in can_gpio.c ( GPIO27 was GPIO21 on rev1)

@@ -246,12 +246,14 @@ drvAsynLedPulser::drvAsynLedPulser( const char *portName, const char *CanPort,
   can_id_      = can_id;
 
   // Read in calibration of LCD
-  std::ifstream input( filename, std::ios_base::in );
+  char *path = getenv("LIGHT_PULSER_CALIBRATION");
+  strcat( path, filename );
+  std::ifstream input( path, std::ios_base::in );
   std::string line;
 
   if ( !input.is_open() ) {
     fprintf( stderr, "\033[31;1m%s:%s:%s: Can not open file '%s': %s\033[0m\n", 
-             driverName, deviceName_, functionName, filename, strerror( errno ) );
+             driverName, deviceName_, functionName, path, strerror( errno ) );
     return;
   }
   while( std::getline( input, line ) ) {

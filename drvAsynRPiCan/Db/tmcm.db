@@ -8,12 +8,13 @@
 # ### Ref 1.0; 2013-01-07                   ### #
 # ###                                       ### #
 # ### macros: subsys  PANDA subsystem       ### #
+# ###         sector  Sector of subsys      ### #
 # ###         BUS     AsynPort              ### #
 #################################################
 
 # TMCM Status message
 # This record is updated after each read or write command
-record( mbbi, "PANDA:$(subsys):MOTOR:STATUS" ) {
+record( mbbi, "PANDA:$(subsys):MOTOR:$(sector):STATUS" ) {
   field( DTYP, "asynUInt32" )
   field( INP,  "@asyn($(BUS),0,1)TMCM142_STATUS" )
   field( SCAN, "I/O Intr" )
@@ -51,7 +52,7 @@ record( mbbi, "PANDA:$(subsys):MOTOR:STATUS" ) {
 }
 
 # Move to an absolute position
-record( longout, "PANDA:$(subsys):MOTOR:MVP:ABS" ) {
+record( longout, "PANDA:$(subsys):MOTOR:$(sector):MVP:ABS" ) {
   field( DTYP, "asynUInt32" )
   field( OUT,  "@asyn($(BUS),0,1)TMCM142_MVP" )
   # Limits 
@@ -63,8 +64,14 @@ record( longout, "PANDA:$(subsys):MOTOR:MVP:ABS" ) {
   field( LOPR, "-2147483648" )
 }
 
+# Stop motor
+record( bo, "PANDA:$(subsys):MOTOR:$(sector):MST" ) {
+  field( DTYP, "asynUInt32" )
+  field( OUT,  "@asyn($(BUS),0,1)TMCM142_MST" )
+}
+
 # set current position
-record( longout, "PANDA:$(subsys):MOTOR:SAP:ACTUALPOSITION" ) {
+record( longout, "PANDA:$(subsys):MOTOR:$(sector):SAP:ACTUALPOSITION" ) {
   field( DTYP, "asynUInt32" )
   field( OUT,  "@asyn($(BUS),1,1)TMCM142_SAP" )
   # Limits 
@@ -77,7 +84,7 @@ record( longout, "PANDA:$(subsys):MOTOR:SAP:ACTUALPOSITION" ) {
 }
 
 # set max positioning speed
-record( longout, "PANDA:$(subsys):MOTOR:SAP:MAXSPEED" ) {
+record( longout, "PANDA:$(subsys):MOTOR:$(sector):SAP:MAXSPEED" ) {
   field( DTYP, "asynUInt32" )
   field( OUT,  "@asyn($(BUS),4,1)TMCM142_SAP" )
   # Limits 
@@ -90,7 +97,7 @@ record( longout, "PANDA:$(subsys):MOTOR:SAP:MAXSPEED" ) {
 }
 
 # Set max acceleration and deceleration
-record( longout, "PANDA:$(subsys):MOTOR:SAP:MAXACCELERATION" ) {
+record( longout, "PANDA:$(subsys):MOTOR:$(sector):SAP:MAXACCELERATION" ) {
   field( DTYP, "asynUInt32" )
   field( OUT,  "@asyn($(BUS),5,1)TMCM142_SAP" )
   # Limits 
@@ -103,7 +110,7 @@ record( longout, "PANDA:$(subsys):MOTOR:SAP:MAXACCELERATION" ) {
 }
 
 # Set "right limit switch disable"
-record( bo, "PANDA:$(subsys):MOTOR:SAP:RIGHTLIMITSWITCH" ) {
+record( bo, "PANDA:$(subsys):MOTOR:$(sector):SAP:RIGHTLIMITSWITCH" ) {
   field( DTYP, "asynUInt32" )
   field( OUT,  "@asyn($(BUS),12,1)TMCM142_SAP" )
   field( ONAM, "Enabled" )
@@ -111,7 +118,7 @@ record( bo, "PANDA:$(subsys):MOTOR:SAP:RIGHTLIMITSWITCH" ) {
 }
 
 # Set "left limit switch disable"
-record( bo, "PANDA:$(subsys):MOTOR:SAP:LEFTLIMITSWITCH" ) {
+record( bo, "PANDA:$(subsys):MOTOR:$(sector):SAP:LEFTLIMITSWITCH" ) {
   field( DTYP, "asynUInt32" )
   field( OUT,  "@asyn($(BUS),13,1)TMCM142_SAP" )
   field( ONAM, "Enabled" )
@@ -119,7 +126,7 @@ record( bo, "PANDA:$(subsys):MOTOR:SAP:LEFTLIMITSWITCH" ) {
 }
 
 # Set stop deceleration
-record( longout, "PANDA:$(subsys):MOTOR:SAP:STOPDECELERATION" ) {
+record( longout, "PANDA:$(subsys):MOTOR:$(sector):SAP:STOPDECELERATION" ) {
   field( DTYP, "asynUInt32" )
   field( OUT,  "@asyn($(BUS),15,1)TMCM142_SAP" )
   # Limits 
@@ -132,16 +139,17 @@ record( longout, "PANDA:$(subsys):MOTOR:SAP:STOPDECELERATION" ) {
 }
 
 # Set switch mode
-record( mbboDirect, "PANDA:$(subsys):MOTOR:SAP:SWITCHMODE" ) {
+record( mbboDirect, "PANDA:$(subsys):MOTOR:$(sector):SAP:SWITCHMODE" ) {
   field( DTYP, "asynUInt32" )
   field( OUT,  "@asyn($(BUS),27,1)TMCM142_SAP" )
 }
 
 # Set µstep resolution
-record( mbbo, "PANDA:$(subsys):MOTOR:SAP:USTEPRESOLUTION" ) {
+record( mbbo, "PANDA:$(subsys):MOTOR:$(sector):SAP:USTEPRESOLUTION" ) {
   field( DTYP, "asynUInt32" )
   field( OUT,  "@asyn($(BUS),27,1)TMCM142_SAP" )
 
+  # state strings
   field( ZRST, "2048 micro steps" )
   field( ONST, "1024 micro steps" )
   field( TWST, "512 micro steps" )
@@ -154,12 +162,26 @@ record( mbbo, "PANDA:$(subsys):MOTOR:SAP:USTEPRESOLUTION" ) {
   field( NIST, "4 micro steps" )
   field( TEST, "2 micro steps" )
   field( ELST, "1 micro steps" )
+
+  # state values
+  field( ZRVL, "0" )
+  field( ONVL, "1" )
+  field( TWVL, "2" )
+  field( THVL, "3" )
+  field( FRVL, "4" )
+  field( FVVL, "5" )
+  field( SXVL, "6" )
+  field( SVVL, "7" )
+  field( EIVL, "8" )
+  field( NIVL, "9" )
+  field( TEVL, "10" )
+  field( ELVL, "11" )
 }
 
 ######################################################################
 
 # Get current position
-record( longin, "PANDA:$(subsys):MOTOR:SAP:ACTUALPOSITION:R" ) {
+record( longin, "PANDA:$(subsys):MOTOR:GAP:ACTUALPOSITION" ) {
   field( DTYP, "asynUInt32" )
   field( INP,  "@asyn($(BUS),1,1)TMCM142_GAP" )
   # Display
@@ -169,7 +191,7 @@ record( longin, "PANDA:$(subsys):MOTOR:SAP:ACTUALPOSITION:R" ) {
 }
 
 # Get max positioning speed
-record( longin, "PANDA:$(subsys):MOTOR:SAP:MAXSPEED:R" ) {
+record( longin, "PANDA:$(subsys):MOTOR:GAP:MAXSPEED" ) {
   field( DTYP, "asynUInt32" )
   field( INP,  "@asyn($(BUS),4,1)TMCM142_GAP" )
   # Display
@@ -179,7 +201,7 @@ record( longin, "PANDA:$(subsys):MOTOR:SAP:MAXSPEED:R" ) {
 }
 
 # Get max acceleration and deceleration
-record( longin, "PANDA:$(subsys):MOTOR:SAP:MAXACCELERATION:R" ) {
+record( longin, "PANDA:$(subsys):MOTOR:GAP:MAXACCELERATION" ) {
   field( DTYP, "asynUInt32" )
   field( INP,  "@asyn($(BUS),5,1)TMCM142_GAP" )
   # Limits 
@@ -192,7 +214,7 @@ record( longin, "PANDA:$(subsys):MOTOR:SAP:MAXACCELERATION:R" ) {
 }
 
 # Get "right limit switch disable"
-record( bi, "PANDA:$(subsys):MOTOR:SAP:RIGHTLIMITSWITCH:R" ) {
+record( bi, "PANDA:$(subsys):MOTOR:GAP:RIGHTLIMITSWITCH" ) {
   field( DTYP, "asynUInt32" )
   field( INP,  "@asyn($(BUS),12,1)TMCM142_GAP" )
   field( ONAM, "Enabled" )
@@ -200,7 +222,7 @@ record( bi, "PANDA:$(subsys):MOTOR:SAP:RIGHTLIMITSWITCH:R" ) {
 }
 
 # Get "left limit switch disable"
-record( bi, "PANDA:$(subsys):MOTOR:SAP:LEFTLIMITSWITCH:R" ) {
+record( bi, "PANDA:$(subsys):MOTOR:$(sector):GAP:LEFTLIMITSWITCH" ) {
   field( DTYP, "asynUInt32" )
   field( INP,  "@asyn($(BUS),13,1)TMCM142_GAP" )
   field( ONAM, "Enabled" )
@@ -208,7 +230,7 @@ record( bi, "PANDA:$(subsys):MOTOR:SAP:LEFTLIMITSWITCH:R" ) {
 }
 
 # Get stop deceleration
-record( longin, "PANDA:$(subsys):MOTOR:SAP:STOPDECELERATION:R" ) {
+record( longin, "PANDA:$(subsys):MOTOR:$(sector):GAP:STOPDECELERATION" ) {
   field( DTYP, "asynUInt32" )
   field( INP,  "@asyn($(BUS),15,1)TMCM142_GAP" )
   # Display
@@ -218,20 +240,20 @@ record( longin, "PANDA:$(subsys):MOTOR:SAP:STOPDECELERATION:R" ) {
 }
 
 # Get switch mode
-record( mbbiDirect, "PANDA:$(subsys):MOTOR:SAP:SWITCHMODE:R" ) {
+record( mbbiDirect, "PANDA:$(subsys):MOTOR:$(sector):GAP:SWITCHMODE" ) {
   field( DTYP, "asynUInt32" )
   field( INP,  "@asyn($(BUS),27,1)TMCM142_GAP" )
 }
 # 
-#record( bi, "PANDA:$(subsys):MOTOR:SAP:SWITCHMODE:R:B2" ) {
-#  field( INP,  "PANDA:$(subsys):MOTOR:SAP:SWITCHMODE:R.B2" )
+#record( bi, "PANDA:$(subsys):MOTOR:$(sector):GAP:SWITCHMODE:B2" ) {
+#  field( INP,  "PANDA:$(subsys):MOTOR:$(sector):GAP:SWITCHMODE.B2" )
 #  field( ONAM, "" )
 #  field( ZNAM, "" )
 #}
 
 
 # Get µstep resolution
-record( mbbi, "PANDA:$(subsys):MOTOR:SAP:USTEPRESOLUTION:R" ) {
+record( mbbi, "PANDA:$(subsys):MOTOR:$(sector):GAP:USTEPRESOLUTION" ) {
   field( DTYP, "asynUInt32" )
   field( INP,  "@asyn($(BUS),27,1)TMCM142_GAP" )
 
@@ -247,4 +269,17 @@ record( mbbi, "PANDA:$(subsys):MOTOR:SAP:USTEPRESOLUTION:R" ) {
   field( NIST, "4 micro steps" )
   field( TEST, "2 micro steps" )
   field( ELST, "1 micro steps" )
+
+  field( ZRVL, "0" )
+  field( ONVL, "1" )
+  field( TWVL, "2" )
+  field( THVL, "3" )
+  field( FRVL, "4" )
+  field( FVVL, "5" )
+  field( SXVL, "6" )
+  field( SVVL, "7" )
+  field( EIVL, "8" )
+  field( NIVL, "9" )
+  field( TEVL, "10" )
+  field( ELVL, "11" )
 }

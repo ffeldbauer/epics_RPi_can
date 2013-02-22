@@ -29,5 +29,5 @@ Currently these AsynPortDrivers support
 - TMCM142 1-axis stepper controller/driver (via CAN)
 
 To use the AsynPortDrivers you will need
-- EPICS base (http://www.aps.anl.gov/epics/)
-- AsynDriver (http://www.aps.anl.gov/epics/modules/soft/asyn/)
+- EPICS base 3.14.12.2 or later (http://www.aps.anl.gov/epics/)
+- AsynDriver 4-21 or later (http://www.aps.anl.gov/epics/modules/soft/asyn/)

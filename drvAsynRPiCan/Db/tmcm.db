@@ -244,13 +244,31 @@ record( mbbiDirect, "PANDA:$(subsys):MOTOR:$(sector):GAP:SWITCHMODE" ) {
   field( DTYP, "asynUInt32" )
   field( INP,  "@asyn($(BUS),27,1)TMCM142_GAP" )
 }
-# 
-#record( bi, "PANDA:$(subsys):MOTOR:$(sector):GAP:SWITCHMODE:B2" ) {
-#  field( INP,  "PANDA:$(subsys):MOTOR:$(sector):GAP:SWITCHMODE.B2" )
-#  field( ONAM, "" )
-#  field( ZNAM, "" )
-#}
-
+ 
+# Left stop switch polarity
+record( bi, "PANDA:$(subsys):MOTOR:$(sector):GAP:SWITCHMODE:LSTOP:POL" ) {
+  field( INP,  "PANDA:$(subsys):MOTOR:$(sector):GAP:SWITCHMODE.B2" )
+  field( ONAM, "" )
+  field( ZNAM, "" )
+}
+# Right stop switch polarity
+record( bi, "PANDA:$(subsys):MOTOR:$(sector):GAP:SWITCHMODE:RSTOP:POL" ) {
+  field( INP,  "PANDA:$(subsys):MOTOR:$(sector):GAP:SWITCHMODE.B3" )
+  field( ONAM, "" )
+  field( ZNAM, "" )
+}
+# Swap left and right stop switch
+record( bi, "PANDA:$(subsys):MOTOR:$(sector):GAP:SWITCHMODE:SWAPSTOP" ) {
+  field( INP,  "PANDA:$(subsys):MOTOR:$(sector):GAP:SWITCHMODE.B4" )
+  field( ONAM, "" )
+  field( ZNAM, "" )
+}
+# enable soft stop
+record( bi, "PANDA:$(subsys):MOTOR:$(sector):GAP:SWITCHMODE:SOFTSTOP" ) {
+  field( INP,  "PANDA:$(subsys):MOTOR:$(sector):GAP:SWITCHMODE.B5" )
+  field( ONAM, "" )
+  field( ZNAM, "" )
+}
 
 # Get µstep resolution
 record( mbbi, "PANDA:$(subsys):MOTOR:$(sector):GAP:USTEPRESOLUTION" ) {

@@ -65,7 +65,7 @@ static u8 nIRQ = 4;
 static const u32 gpioMaskL = (  7 <<  7 );
 static const u32 gpioMaskM = (  1 << 27 );  // was 21 on rev1
 static const u32 gpioMaskH = ( 15 << 22 );
-static const u32 gpioMask  = (  7 <<  7 ) | ( 15 << 22 ) | (  1 << 27 ); // last one was 21 on rev1
+static const u32 gpioMask  = (  7 <<  7 ) | ( 15 << 22 ) | (  1 << 27 );
 
 // Masks to switch direction of GPIOs used as A/D lines
 // To switch pin g to input use GPIOFSEL( g/10 ) &= ~ ( 7 <<  (( g % 10 ) * 3 ) );

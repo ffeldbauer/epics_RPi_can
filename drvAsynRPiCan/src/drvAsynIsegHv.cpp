@@ -366,8 +366,8 @@ asynStatus drvAsynIsegHv::readFloat64( asynUser *pasynUser, epicsFloat64 *value 
   myValue.val[1] = pframe->data[ it->second.dlc + 2 ];
   myValue.val[0] = pframe->data[ it->second.dlc + 3 ];
 
-  // convert current from A to uA
-  if ( function == P_Chan_Imom || function == P_Chan_Iset ) myValue.fval *= 1.e6;
+  // convert current from A to uA/nA
+  if ( function == P_Chan_Imom || function == P_Chan_Iset ) myValue.fval *= conversion_;
 
   // update the parameter with the received value
   status = setDoubleParam( addr, function, myValue.fval );
@@ -464,6 +464,70 @@ asynStatus drvAsynIsegHv::writeFloat64( asynUser *pasynUser, epicsFloat64 value 
 }
 
 //------------------------------------------------------------------------------
+//! @brief   Called when asyn clients call pasynOption->read()
+//!
+//! @param   [in]  pasynUser       pasynUser structure that encodes the reason and address.
+//! @param   [in]  key             Name of option
+//! @param   [out] value           String containing the value for the option
+//! @param   [in]  maxChars        Size of value string
+//!
+//! @return  in case of no error occured asynSuccess is returned. Otherwise
+//!          asynError is returned. An error message is stored
+//!          in pasynUser->errorMessage.
+//------------------------------------------------------------------------------
+asynStatus drvAsynRPiCan::readOption( asynUser *pasynUser, const char *key,
+                                      char *value, int maxChars ) {
+  const char* functionName = "readOption";
+
+  if( epicsStrCaseCmp( key, "use_na" ) == 0 ) {
+    if ( 1.e6 == conversion_ )  strcpy(value, "0" );
+    else                        strcpy(value, "1" );
+  } else {
+    // unknown option
+    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize,
+                   "%s:%s: Invalid option key '%s'",
+                   driverName, functionName, key );
+    return asynError;
+  }
+    
+  return asynSuccess;
+}
+
+//------------------------------------------------------------------------------
+//! @brief   Called when asyn clients call pasynOption->write()
+//!
+//! @param   [in]  pasynUser       pasynUser structure that encodes the reason and address.
+//! @param   [in]  key             Name of option
+//! @param   [in]  value           String containing the value for the option
+//!
+//! @return  in case of no error occured asynSuccess is returned. Otherwise
+//!          asynError is returned. A error message is stored
+//!          in pasynUser->errorMessage.
+//------------------------------------------------------------------------------
+asynStatus drvAsynRPiCan::writeOption( asynUser *pasynUser, const char *key, const char *value ) {
+  const char* functionName = "writeOption";
+
+  if( epicsStrCaseCmp( key, "use_na" ) == 0 ) {
+    int dummy = 0;
+    if( sscanf( value, "%u", &dummy ) != 1 ) {
+      epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize,
+                     "Bad number");
+      return asynError;
+    }
+    if ( dummy )  conversion_ = 1.e9;
+    else          conversion_ = 1.e6;
+  } else {
+    // unknown option
+    epicsSnprintf( pasynUser->errorMessage, pasynUser->errorMessageSize,
+                   "%s:%s: Invalid option key '%s'",
+                   driverName, functionName, key );
+    return asynError;
+  }
+  
+  return asynSuccess;
+}
+
+//------------------------------------------------------------------------------
 //! @brief   Constructor for the drvAsynIsegHv class.
 //!          Calls constructor for the asynPortDriver base class.
 //!
@@ -513,6 +577,9 @@ drvAsynIsegHv::drvAsynIsegHv( const char *portName, const char *CanPort,
              driverName, deviceName_, functionName, CanPort );
     return;
   }
+
+  // used to convert the measured current from A to u/nA
+  conversion_ = 1.e6;
   
   can_frame_t *pframe = new can_frame_t;
   // Send "status connected" message

@@ -66,6 +66,8 @@ class drvAsynIsegHv : public asynPortDriver {
   virtual asynStatus writeUInt32Digital( asynUser *pasynUser, epicsUInt32 value, epicsUInt32 mask );
   virtual asynStatus readFloat64( asynUser *pasynUser, epicsFloat64 *value );
   virtual asynStatus writeFloat64( asynUser *pasynUser, epicsFloat64 value );
+  virtual asynStatus readOption( asynUser *pasynUser, const char *key, char *value, int maxChars );
+  virtual asynStatus writeOption( asynUser *pasynUser, const char *key, const char *value );
 
  protected:
   /** Values used for pasynUser->reason, and indexes into the parameter library. */
@@ -99,6 +101,7 @@ class drvAsynIsegHv : public asynPortDriver {
   char           *deviceName_;
   epicsUInt32     can_id_;
   asynUser       *pAsynUserGenericPointer_;
+  epicsFloat64    conversion_;
 };
 
 #define NUM_ISEGHV_PARAMS (&LAST_ISEGHV_COMMAND - &FIRST_ISEGHV_COMMAND + 1)

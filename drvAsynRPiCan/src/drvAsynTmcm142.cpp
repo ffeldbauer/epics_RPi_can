@@ -386,8 +386,8 @@ drvAsynTmcm142::drvAsynTmcm142( const char *portName, const char *CanPort,
          ( pframe->data[0] != ( can_id_w_ & 0xff ) ) ||
          ( pframe->data[2] != 6 ) 
          ){
-      fprintf( stderr, "\033[31;1m%s:%s:%s: function=%d, Mismatch in reply.\nGot %08x %d %02x %02x %02x where %08x 7 %02x XX %02x was expected\033[0m\n", 
-               driverName, deviceName_, functionName, function,
+      fprintf( stderr, "\033[31;1m%s:%s:%s: Mismatch in reply.\nGot %08x %d %02x %02x %02x where %08x 7 %02x XX %02x was expected\033[0m\n", 
+               driverName, deviceName_, functionName,
                pframe->can_id, pframe->can_dlc, pframe->data[0], pframe->data[1], pframe->data[2],
                can_id_r_, ( can_id_w_ & 0xff ), 6 );
       return;

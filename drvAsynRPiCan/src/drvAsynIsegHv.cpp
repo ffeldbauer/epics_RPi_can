@@ -423,7 +423,7 @@ asynStatus drvAsynIsegHv::writeFloat64( asynUser *pasynUser, epicsFloat64 value 
 
   can_frame_t *pframe = new can_frame_t;
   pframe->can_id = can_id_;
-  pframe->can_dlc = it->second.dlc;
+  pframe->can_dlc = it->second.dlc + 4;
   pframe->data[0] = it->second.data0;
   pframe->data[1] = it->second.data1;
   pframe->data[2] = (epicsUInt8)( addr & 0xff );
@@ -475,7 +475,7 @@ asynStatus drvAsynIsegHv::writeFloat64( asynUser *pasynUser, epicsFloat64 value 
 //!          asynError is returned. An error message is stored
 //!          in pasynUser->errorMessage.
 //------------------------------------------------------------------------------
-asynStatus drvAsynRPiCan::readOption( asynUser *pasynUser, const char *key,
+asynStatus drvAsynIsegHv::readOption( asynUser *pasynUser, const char *key,
                                       char *value, int maxChars ) {
   const char* functionName = "readOption";
 
@@ -504,7 +504,7 @@ asynStatus drvAsynRPiCan::readOption( asynUser *pasynUser, const char *key,
 //!          asynError is returned. A error message is stored
 //!          in pasynUser->errorMessage.
 //------------------------------------------------------------------------------
-asynStatus drvAsynRPiCan::writeOption( asynUser *pasynUser, const char *key, const char *value ) {
+asynStatus drvAsynIsegHv::writeOption( asynUser *pasynUser, const char *key, const char *value ) {
   const char* functionName = "writeOption";
 
   if( epicsStrCaseCmp( key, "use_na" ) == 0 ) {

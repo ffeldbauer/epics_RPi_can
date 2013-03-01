@@ -226,7 +226,7 @@ extern "C" {
   //----------------------------------------------------------------------------
   //! @brief   Register functions to EPICS
   //----------------------------------------------------------------------------
-  void drvAsynRPiCanRegister( void ) {
+  void drvAsynCanRegister( void ) {
     static int firstTime = 1;
     if ( firstTime ) {
       iocshRegister( &initRPiCanFuncDef,       initRPiCanCallFunc );
@@ -240,5 +240,5 @@ extern "C" {
     }
   }
   
-  epicsExportRegistrar( drvAsynRPiCanRegister );
+  epicsExportRegistrar( drvAsynCanRegister );
 }

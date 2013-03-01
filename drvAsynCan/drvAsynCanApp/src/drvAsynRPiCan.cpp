@@ -365,6 +365,42 @@ drvAsynRPiCan::drvAsynRPiCan( const char *portName, const char *ttyName )
       
 }
 
+/* Configuration routines.  Called directly, or from the iocsh function below */
+extern "C" {
+  
+  //----------------------------------------------------------------------------
+  //! @brief   EPICS iocsh callable function to call constructor
+  //!          for the drvAsynRPiCan class.
+  //!
+  //! @param   [in]  portName The name of the asyn port driver to be created.
+  //!          [in]  ttyName  The name of the interface 
+  //----------------------------------------------------------------------------
+  int drvAsynRPiCanConfigure( const char *portName, const char *ttyName ) {
+    new drvAsynRPiCan( portName, ttyName );
+    return( asynSuccess );
+  }
+  static const iocshArg initRPiCanArg0 = { "portName", iocshArgString };
+  static const iocshArg initRPiCanArg1 = { "ttyName",  iocshArgString };
+  static const iocshArg * const initRPiCanArgs[] = { &initRPiCanArg0, &initRPiCanArg1 };
+  static const iocshFuncDef initRPiCanFuncDef = { "drvAsynRPiCanConfigure", 2, initRPiCanArgs };
+  static void initRPiCanCallFunc( const iocshArgBuf *args ) {
+    drvAsynRPiCanConfigure( args[0].sval, args[1].sval );
+  }
+  
+  //----------------------------------------------------------------------------
+  //! @brief   Register functions to EPICS
+  //----------------------------------------------------------------------------
+  void drvAsynRPiCanRegister( void ) {
+    static int firstTime = 1;
+    if ( firstTime ) {
+      iocshRegister( &initRPiCanFuncDef,       initRPiCanCallFunc );
+      firstTime = 0;
+    }
+  }
+  
+  epicsExportRegistrar( drvAsynRPiCanRegister );
+}
+
 //******************************************************************************
 //! EOF
 //******************************************************************************

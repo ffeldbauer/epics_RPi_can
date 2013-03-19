@@ -337,8 +337,9 @@
   </ul>
   <p>Accessing this driver from the IOC is done by the standard device support from asynDriver.
     All parameters are of type asynInt32. For parameter names the Mnemonic commands of the controller
-    are used. The address parameter from AsynDriver is used to code the <i>type</i> inside the command.
-    Bank/Motor id is hard coded as 0.<br />
+    prepended with 'TMCM142_' are used.
+    The address parameter from AsynDriver is used to code the <i>type</i> inside the command.
+    Bank/Motor id is currently hard coded as 0.<br />
     For additional information refer to the <a href="http://www.mocontronic.de/files/TMCM-142_TMCL_firmware_manual.pdf">TMCL Firmware Manual</a></p>
 
   <hr />
@@ -348,11 +349,10 @@
   <p>After obtaining a copy of the distribution, it must be installed and built for use
     at your site. Therefore you have to follow these steps:</p>
   <ol>
-    <li>Download and build EPICS base (3.14.12.2 or newer): <a href="http://www.aps.anl.gov/epics/" target="new">http://www.aps.anl.gov/epics/</a></li>
-    <li>Download the AsynDriver module (4-21 or newer): <a target="new" href="http://www.aps.anl.gov/epics/modules/soft/asyn/">http://www.aps.anl.gov/epics/modules/soft/asyn/</a></li>
-    <li>Apply the <tt>drvAsynRPiCan.patch</tt> patch file contained in this package to the AsynDriver module<br />
-    and copy the directory <tt>drvAsynRPiCan</tt> into the AsynDriver top directory</li>
-    <li>Build the AsynDriver module</li>
+    <li>Download and build <a href="http://www.aps.anl.gov/epics/" target="new">EPICS base</a> (3.14.12.2 or newer)
+      and the <a target="new" href="http://www.aps.anl.gov/epics/modules/soft/asyn/">AsynDriver module</a> (4-21 or newer)</li>
+    <li>Change path to AsynDriver and EPICS base in drvAsynCan/configure/RELEASE</li>
+    <li>Build the module</li>
   </ol>
 <hr/>
 <p><span style="font-size: 8pt">1: These parameters are used as command, which means the value of these

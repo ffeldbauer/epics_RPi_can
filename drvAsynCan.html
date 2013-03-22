@@ -59,14 +59,16 @@
   field(INP,  "@asyn(portA,0,.1)thisIsForDriver")</pre>
   <hr />
   <div style="text-align: center">
-    <h2 id="drvAsynRPiCan">drvAsynRPiCan</h2>
+    <h2 id="drvAsynRPiCan">drvAsynRPiCan/drvAsynPeakCan</h2>
   </div>
-  <p>The drvAsynRPiCan driver supports devices connected to the CAN interface.
+  <p>The drvAsynRPiCan/drvAsynPeakCan driver supports devices connected to the CAN interface.
      It does not provide an interface for accessing it directly from a record
      on the IOC. It is used as lower-level driver for the communication with
      the hardware.<br /><br />
-     CAN interfaces are configured with the <tt>drvAsynRPiCanConfigure</tt> command:</p>
+     CAN interfaces are configured with the <tt>drvAsynRPiCanConfigure</tt> and <tt>drvAsynPeakCanConfigure</tt> commands,
+     respectively:</p>
   <pre>  drvAsynRPiCanConfigure( "portName", "canName" )</pre>
+  <pre>  drvAsynPeakCanConfigure( "portName", "canName" )</pre>
   <p>where the arguments are:</p>
   <ul>
     <li>portName - The portName that is registered with asynManager.</li>
@@ -102,7 +104,6 @@
       <tr align="center" valign="middle"><td>0  </td><td> 1  </td><td> 1 </td><td>  1</td><td> IDE_bit = 0</td></tr>
       <tr align="center" valign="middle"><td></td><td>RTR_bit = 0</td></td><td colspan="2">RTR_bit = 1</td><td>RTR_bit = 0</td><td></td></tr>
       </table>
-
 
   <hr />
   <div style="text-align: center">
@@ -327,11 +328,11 @@
     Therefore the drvAsynRPiCan driver has to be configured before using this driver.
     <br /><br />
     A TMCM142 controller is configured with the <tt>drvAsynTmcm142Configure</tt> command:</p>
-  <pre>  drvAsynLedPulserConfigure( "portName", "RPiCanPort", can_id_w, can_id_r )</pre>
+  <pre>  drvAsynLedPulserConfigure( "portName", "CanPort", can_id_w, can_id_r )</pre>
   <p>where the arguments are:</p>
   <ul>
     <li>portName - The portName that is registered with asynManager.</li>
-    <li>RPiCanPort - The name of a previous configured drvAsynRPiCan driver.</li>
+    <li>CanPort - The name of a previous configured drvAsynRPiCan/drvAsynPeakCan driver.</li>
     <li>can_id_w - The unique CAN Bus id of this motor driver.</li>
     <li>can_id_r - The unique CAN Bus id of this motor driver used for replies.</li>
   </ul>

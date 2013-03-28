@@ -17,5 +17,5 @@ install:
 	sudo cp rpi_can.ko /lib/modules/$(shell uname -r)/kernel/drivers/canbus/rpi_can_rev1.ko
 
 uninstall:
-	@-sudo rm /lib/modules/$(shell uname -r)/kernel/drivers/canbus/rpi_can.ko
+	@-sudo rm /lib/modules/$(shell uname -r)/kernel/drivers/canbus/rpi_can_rev1.ko
 

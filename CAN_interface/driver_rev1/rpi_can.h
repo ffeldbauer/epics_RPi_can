@@ -35,7 +35,7 @@
 #include <linux/can.h>
 
 //_____ D E F I N I T I O N S __________________________________________________
-#define CURRENT_RELEASE "Release_20121220_n"
+#define CURRENT_RELEASE "Release_20130328_n"
 #define DEVICE_NAME "RaspPiCanInterfaceRev1"
 
 //****************************************************************************

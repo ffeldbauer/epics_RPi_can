@@ -1,7 +1,7 @@
 #****************************************************************************
 # Copyright (C) 2013  Florian Feldbauer
 #
-# florian@ep1.ruh-uni-bochum.de
+# florian@ep1.ruhr-uni-bochum.de
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -40,19 +40,19 @@ endif
 # MACROS AND DEFINES
 
 define make-all
-@cd driver; make; cd ../lib; make; cd ..
+@cd driver; make; cd ../driver_rev1; make; cd ../lib; make; cd ..
 endef
 
 define make-clean
-@cd driver; make clean; cd ../lib; make clean; cd ..
+@cd driver; make clean; cd ../driver_rev1; make clean; cd ../lib; make clean; cd ..
 endef
 
 define make-install
-@cd driver; make install; cd ../lib; make install; cd ..
+@cd driver; make install; cd ../driver_rev1; make install; cd ../lib; make install; cd ..
 endef
 
 define make-uninstall
-@cd driver; make uninstall; cd ../lib; make uninstall; cd ..
+@cd driver; make uninstall; cd ../driver_rev1; make uninstall; cd ../lib; make uninstall; cd ..
 endef
 
 #****************************************************************************
@@ -65,10 +65,12 @@ clean:
 
 install:
 	$(make-install)
+	sudo cp udev/99-rpi_can.rules /etc/udev/rules.d/99-rpi_can.rules
+
 
 uninstall:
 	$(make-uninstall)
-
+	@sudo rm /etc/udev/rules.d/99-rpi_can.rules
 # end
 
 

@@ -35,7 +35,7 @@
 #include <string.h>
 #include <errno.h>
 
-#include "lib/libpican.h"
+#include "libpican.h"
 
 //_____ D E F I N I T I O N S __________________________________________________
 #define LOCAL_STRING_LEN 64       // length of internal used strings

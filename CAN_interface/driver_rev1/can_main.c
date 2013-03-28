@@ -51,7 +51,7 @@
 
 //_____ D E F I N I T I O N S __________________________________________________
 MODULE_AUTHOR( "florian@ep1.ruhr-uni-bochum.de" );
-MODULE_DESCRIPTION( "Driver for RaspberryPi CAN interface." );
+MODULE_DESCRIPTION( "Driver for RaspberryPi CAN interface. This driver is for Revision 1 of the Raspberry Pi!" );
 MODULE_VERSION( CURRENT_RELEASE );
 MODULE_SUPPORTED_DEVICE( "PANDA Raspberry Pi CAN Extension Board" );
 MODULE_LICENSE( "GPL" );

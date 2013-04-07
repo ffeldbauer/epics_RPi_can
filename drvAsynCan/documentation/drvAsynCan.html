@@ -18,7 +18,7 @@
   </div>
   <div>
     <a href="#DeviceSupport">Generic Device Support for EPICS records from AsynDriver</a><br />
-    <a href="#drvAsynRPiCan">drvAsynRPiCan</a><br />
+    <a href="#drvAsynCan">drvAsynCan</a><br />
     <a href="#drvAsynIsegHv">drvAsynIsegHv</a><br />
     <a href="#drvAsynWienerVme">drvAsynWienerVme</a><br />
     <a href="#drvAsynTHMP">drvAsynTHMP</a><br />
@@ -59,21 +59,22 @@
   field(INP,  "@asyn(portA,0,.1)thisIsForDriver")</pre>
   <hr />
   <div style="text-align: center">
-    <h2 id="drvAsynRPiCan">drvAsynRPiCan/drvAsynPeakCan</h2>
+    <h2 id="drvAsynCan">drvAsynCan</h2>
   </div>
-  <p>The drvAsynRPiCan/drvAsynPeakCan driver supports devices connected to the CAN interface.
+  <p>The drvAsynCan driver supports devices connected to the CAN interface.
      It does not provide an interface for accessing it directly from a record
      on the IOC. It is used as lower-level driver for the communication with
-     the hardware.<br /><br />
-     CAN interfaces are configured with the <tt>drvAsynRPiCanConfigure</tt> and <tt>drvAsynPeakCanConfigure</tt> commands,
-     respectively:</p>
-  <pre>  drvAsynRPiCanConfigure( "portName", "canName" )</pre>
-  <pre>  drvAsynPeakCanConfigure( "portName", "canName" )</pre>
+     the CAN interface itself.<br /><br />
+     CAN interfaces are configured with the <tt>drvAsynCanConfigure</tt> command:</p>
+  <pre>  drvAsynCanConfigure( "portName", "canName" )</pre>
   <p>where the arguments are:</p>
   <ul>
     <li>portName - The portName that is registered with asynManager.</li>
     <li>canName - The name of the local CAN interface (e.g. "/dev/can", "COM1").</li>
   </ul>
+  <p><b>NOTE:</b> Building this module for linux-x86(_64) architectures requires the kernel module from
+     <a href="http://www.peak-system.com/fileadmin/media/linux/index.htm">PEAK systems</a>.
+     On linux-arm the kernel module provided in this package is needed.</p>
   <p>This driver uses asynOption to set the bitrate for CAN messages in bit/s or to add filters for received
     CAN frames.</p>
     <pre>  asynSetOption( "portName", addr, "key", "value" )</pre>
@@ -118,7 +119,7 @@
   <p>where the arguments are:</p>
   <ul>
     <li>portName - The portName that is registered with asynManager.</li>
-    <li>CANport - The name of a previous configured drvAsynRPiCan driver.</li>
+    <li>CANport - The name of a previous configured drvAsynRPiCan/drvAsynPeakCan driver.</li>
     <li>crate_id - The unique id for the crate in which this modules is placed.<br />
       Allowed values are: 0-7</li>
     <li>module_id - The place of this module inside the crate.<br />
@@ -165,7 +166,7 @@
   <p>where the arguments are:</p>
   <ul>
     <li>portName - The portName that is registered with asynManager.</li>
-    <li>CANport - The name of a previous configured drvAsynRPiCan driver.</li>
+    <li>CANport - The name of a previous configured drvAsynRPiCan/drvAsynPeakCan driver.</li>
     <li>crate_id - The unique id for the crate.<br />
       Allowed values are: 1-127</li>
   </ul>
@@ -252,7 +253,7 @@
   <p>where the arguments are:</p>
   <ul>
     <li>portName - The portName that is registered with asynManager.</li>
-    <li>CANport - The name of a previous configured drvAsynRPiCan driver.</li>
+    <li>CANport - The name of a previous configured drvAsynRPiCan/drvAsynPeakCan driver.</li>
     <li>can_id - The unique CAN id for this THMP.<br />
       Allowed values are: 0x700-0x7ff</li>
   </ul>
@@ -292,7 +293,7 @@
   <p>where the arguments are:</p>
   <ul>
     <li>portName - The portName that is registered with asynManager.</li>
-    <li>CANport - The name of a previous configured drvAsynRPiCan driver.</li>
+    <li>CANport - The name of a previous configured drvAsynRPiCan/drvAsynPeakCan driver.</li>
     <li>can_id - The unique CAN Bus id of this LED Pulser.<br />
       Allowed values are: 0x600-0x6ff</li>
     <li>filename - The name of the file containing calibration parameters for intensity settings.<br/>
@@ -355,6 +356,9 @@
     <li>Change path to AsynDriver and EPICS base in drvAsynCan/configure/RELEASE</li>
     <li>Build the module</li>
   </ol>
+  <p>Building this module for linux-x86(_64) architectures requires the kernel module from
+    <a href="http://www.peak-system.com/fileadmin/media/linux/index.htm">PEAK systems</a>.
+    On linux-arm the kernel module provided in this package is needed.</p>
 <hr/>
 <p><span style="font-size: 8pt">1: These parameters are used as command, which means the value of these
    parameters will never change</span><br/>

@@ -5,32 +5,30 @@ endif
 REMOVE		= rm -f
 REMOVEDIR	= rm -rf
 COPY		= cp
-SYMLINK		= ln
 
-LIBPATH		= /usr/lib
-
-LDNAME		= libpican.so
-SONAME		= $(LDNAME).1
-TARGET		= $(SONAME).0
-
-EXTRAINCDIRS 	= ../driver/ ./
-EXTRALIBDIRS 	= 
+EXTRAINCDIRS 	= ../lib/
+EXTRALIBDIRS 	= ../lib/
 
 OPT 		= 
 
-CPPFLAGS	+= -fPIC -shared
-CPPFLAGS 	+= -O$(OPT) -Wall -Wl,-soname,$(SONAME)
+CPPFLAGS 	+= -O$(OPT) -Wall
 CPPFLAGS 	+= $(patsubst %,-I%,$(EXTRAINCDIRS))
 
 LDFLAGS 	+= $(patsubst %,-L%,$(EXTRALIBDIRS))
-LDFLAGS 	+= -lc
+LDFLAGS 	+= -lpican
 
-SRC 		= libpican.c
+SRC 		= main.cxx
+SRC 		+= CanTest.cxx
+
+OBJ = $(SRC:%.cxx=%.o)
+
+TARGET		= rpi_can_test
 
 MSG_BEGIN = -------- begin --------
 MSG_END = --------  end  --------
 MSG_CLEANING = Cleaning project:
-MSG_CREATING_LIBRARY = Creating library:
+MSG_COMPILING_CPP = Compiling C++:
+MSG_LINKING = Linking:
 
 ## Build
 all: begin gccversion build end
@@ -49,27 +47,24 @@ end:
 gccversion: 
 		@$(CXX) --version
 
-$(TARGET):	$(SRC)
+%.o : %.cxx
+	@echo
+	@echo $(MSG_COMPILING_CPP) $<
+	$(CXX) -c $(CPPFLAGS) $< -o $@ 
+
+$(TARGET):	$(OBJ)
 		@echo
-		@echo $(MSG_CREATING_LIBRARY) $@
-		$(CXX) $< $(CPPFLAGS) $(LDFLAGS) -o $@
+		@echo $(MSG_LINKING) $@
+		$(CXX) $^ $(CPPFLAGS) $(LDFLAGS) -o $@
 
 install: begin install_do end
 
 install_do:
-	sudo $(COPY) $(TARGET) $(LIBPATH)/$(TARGET)
-	sudo $(SYMLINK) -sf $(LIBPATH)/$(TARGET) $(LIBPATH)/$(SONAME)
-	sudo $(SYMLINK) -s $(LIBPATH)/$(SONAME) $(LIBPATH)/$(LDNAME)
-	sudo $(COPY) libpican.h /usr/include/libpican.h
-	sudo chmod 644 /usr/include/libpican.h
-	sudo /sbin/ldconfig
+	sudo $(COPY) $(TARGET) /usr/local/bin/.
+	sudo chmod a+x /usr/local/bin/$(TARGET)
 
 uninstall:
-	@-sudo rm -f $(LIBPATH)/$(TARGET)
-	@-sudo rm -f $(LIBPATH)/$(SONAME) $(LIBPATH)/$(LDNAME)
-	@-sudo rm -f /usr/include/libpican.h
-	sudo /sbin/ldconfig
-
+	@-sudo rm -f /usr/local/bin/$(TARGET)
 
 clean: begin clean_list end
 
@@ -77,6 +72,7 @@ clean_list :
 	@echo
 	@echo $(MSG_CLEANING)
 	$(REMOVE) $(TARGET)
+	$(REMOVE) $(OBJ)
 
 # Create object files directory
 $(shell mkdir $(OBJDIR) 2>/dev/null)

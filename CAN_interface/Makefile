@@ -33,7 +33,7 @@
 #export CROSS_COMPILE=/home/yanez/matrix500/arm-9tdmi-linux-gnu/bin/arm-9tdmi-linux-gnu-
 
 ifneq ($(CROSS_COMPILE),)
-  export CC=$(CROSS_COMPILE)gcc
+  export CXX=$(CROSS_COMPILE)g++
 endif
 
 #****************************************************************************

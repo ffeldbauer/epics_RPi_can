@@ -1,2 +1,13 @@
+drvAsynCan/db/
+drvAsynCan/dbd/
+drvAsynCan/lib/
+drvAsynCan/bin/
+O.linux-x86_64/
+O.linux-arm/
+O.Common/
+CAN_interface/test/rpi_can_test
+CAN_interface/lib/libpican.so
+CAN_interface/lib/libpican.so.1.0
 DOCU/
+*.o
 *~

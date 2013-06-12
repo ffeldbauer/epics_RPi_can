@@ -6,7 +6,7 @@ REMOVE		= rm -f
 REMOVEDIR	= rm -rf
 COPY		= cp
 
-EXTRAINCDIRS 	= ../lib/
+EXTRAINCDIRS 	= ../lib/ ../driver/
 EXTRALIBDIRS 	= ../lib/
 
 OPT 		= 

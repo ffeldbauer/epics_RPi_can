@@ -40,19 +40,19 @@ endif
 # MACROS AND DEFINES
 
 define make-all
-@cd driver; make; cd ../driver_rev1; make; cd ../lib; make; cd ..
+@cd driver; make; cd ../driver_rev1; make; cd ../lib; make; cd ../test; make; cd ..
 endef
 
 define make-clean
-@cd driver; make clean; cd ../driver_rev1; make clean; cd ../lib; make clean; cd ..
+@cd driver; make clean; cd ../driver_rev1; make clean; cd ../lib; make clean; cd ../test; make clean; cd ..
 endef
 
 define make-install
-@cd driver; make install; cd ../driver_rev1; make install; cd ../lib; make install; cd ..
+@cd driver; make install; cd ../driver_rev1; make install; cd ../lib; make install; cd ../test; make install; cd ..
 endef
 
 define make-uninstall
-@cd driver; make uninstall; cd ../driver_rev1; make uninstall; cd ../lib; make uninstall; cd ..
+@cd driver; make uninstall; cd ../driver_rev1; make uninstall; cd ../lib; make uninstall; cd ../test; make uninstall; cd ..
 endef
 
 #****************************************************************************

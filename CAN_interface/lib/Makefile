@@ -53,6 +53,8 @@ $(TARGET):	$(SRC)
 		@echo
 		@echo $(MSG_CREATING_LIBRARY) $@
 		$(CXX) $< $(CPPFLAGS) $(LDFLAGS) -o $@
+		$(SYMLINK) -sf $(TARGET) $(SONAME)
+		$(SYMLINK) -s $(SONAME) $(LDNAME)
 
 install: begin install_do end
 
@@ -76,7 +78,7 @@ clean: begin clean_list end
 clean_list :
 	@echo
 	@echo $(MSG_CLEANING)
-	$(REMOVE) $(TARGET)
+	$(REMOVE) $(TARGET) $(SONAME) $(LDNAME)
 
 # Create object files directory
 $(shell mkdir $(OBJDIR) 2>/dev/null)

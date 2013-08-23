@@ -48,7 +48,7 @@ define make-clean
 endef
 
 define make-install
-@cd driver; make install; cd ../driver_rev1; make install; cd ../lib; make install; cd ../test; make install; cd ..
+@cd driver; make install; cd ../lib; make install; cd ../test; make install; cd ..
 endef
 
 define make-uninstall

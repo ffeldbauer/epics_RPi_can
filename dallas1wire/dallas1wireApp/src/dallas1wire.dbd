@@ -1,0 +1,1 @@
+device(ai,INST_IO,dev_ai_d1w,"dallas1wire")

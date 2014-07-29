@@ -26,12 +26,14 @@
 //_____ I N C L U D E S _______________________________________________________
 #include <cerrno>
 #include <csignal>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <fcntl.h>
 #include <iostream>
+#include <libsocketcan.h>
 #include <sstream>
-
-#include <libpican.h>
+#include <unistd.h>
 
 #include "CanTest.h"
 #include "Exceptions.h"
@@ -39,51 +41,16 @@
 //_____ D E F I N I T I O N S __________________________________________________
 
 //_____ G L O B A L S __________________________________________________________
-CANBUS* can;
 
 //_____ L O C A L S ____________________________________________________________
-const std::string DEFAULT_FILE = "msg";
-const std::string DEFAULT_DEV = "/dev/rpi_can0";
-const unsigned int DEFAULT_BITRATE = 125000;
+static const std::string  DEFAULT_FILE    = "msg";
+static const std::string  DEFAULT_DEV     = "can0";
+static const unsigned int DEFAULT_BITRATE = 125000;
 
 //_____ F U N C T I O N S ______________________________________________________
 
-void print_diag() {
-  TPDIAG diag;
-  int err = CAN_Statistics( can, &diag );
-  
-  if( err ) {
-    std::cerr << "Can't read diagnostics!\n"
-              << "Error " << err << ": " << strerror( err )
-              << std::endl;
-  } else {
-    double runtime = CanTest::getInstance()->runtime();
-    std::cout << "Test results:\n"
-              << "  count of reads    = " << diag.dwReadCounter << "\n"
-              << "  count of writes   = " << diag.dwWriteCounter << "\n"
-              << "  count of writes/s = " << (double)diag.dwWriteCounter / runtime << "\n"
-              << "  count of errors   = " << diag.dwErrorCounter << "\n"
-              << "  count of irqs     = " << diag.dwIRQcounter << "\n"
-              << "  last CAN status   = 0x" << std::hex << diag.wErrorFlag << std::dec << "\n"
-              << "  last error        = " << diag.nLastError << "\n"
-              << "  driver version    = " << diag.szVersionString << "\n"
-              << std::endl;
-  }
-}
-
-//------------------------------------------------------------------------------
-
-void do_exit() {
-  if ( can ) {
-    print_diag();
-    CAN_Close( can );
-  }
-}
-
-//------------------------------------------------------------------------------
-
 static void signal_handler( int signal ) {
-  do_exit();
+  CanTest::getInstance()->CanClose();
 }
 
 //------------------------------------------------------------------------------
@@ -170,25 +137,22 @@ int main( int argc, char* argv[] ) {
     }
   }
 
-  if ( filename.empty() ) filename = DEFAULT_FILE;
+  if ( filename.empty() )    filename   = DEFAULT_FILE;
+  if ( devicename.empty() )  devicename = DEFAULT_DEV;
+  if ( 0 == bitrate )        bitrate    = DEFAULT_BITRATE;
 
-  CanTest::create( filename );
+  int err = can_set_bitrate( devicename.c_str(), bitrate );
+  if( err ) {
+    std::stringstream errmsg;
+    errmsg << "setBitrate:\n"
+           << "Error " << errno << ": " << strerror( errno )
+           << std::endl;
+    throw CanFailure( errmsg );
+  }
 
-  if ( devicename.empty() ) devicename = DEFAULT_DEV;
-  can = CAN_Open( devicename.c_str(), O_RDWR );
-  if( !can ) {
-    std::cerr << "Cannot open device: '" << devicename << "'!\n'";
-    return -1;
-  }
-  
-  if( 0 == bitrate ) bitrate = DEFAULT_BITRATE;
-  if( CAN_Bitrate( can, bitrate ) ) {
-    std::cerr << "Cannot set bitrate: " << bitrate << "\n"
-              << "Error " << errno << " " << strerror( errno )
-              << std::endl;
-    return -1;
-  }
-  
+  CanTest::create( filename, devicename );
+  //  CanTest::getInstance()->setBitrate( bitrate );
+    
   signal( SIGTERM, signal_handler );
   signal( SIGINT, signal_handler );
 
@@ -200,7 +164,7 @@ int main( int argc, char* argv[] ) {
   } catch( const CanFailure& e ) {
     std::cerr << e.what() << std::endl;
   }
-  do_exit();
+  CanTest::getInstance()->CanClose();
 
   return 0;
 }

@@ -6,8 +6,8 @@ REMOVE		= rm -f
 REMOVEDIR	= rm -rf
 COPY		= cp
 
-EXTRAINCDIRS 	= ../lib/ ../driver/
-EXTRALIBDIRS 	= ../lib/
+EXTRAINCDIRS 	= 
+EXTRALIBDIRS 	= 
 
 OPT 		= 
 
@@ -15,7 +15,7 @@ CPPFLAGS 	+= -O$(OPT) -Wall
 CPPFLAGS 	+= $(patsubst %,-I%,$(EXTRAINCDIRS))
 
 LDFLAGS 	+= $(patsubst %,-L%,$(EXTRALIBDIRS))
-LDFLAGS 	+= -lpican
+LDFLAGS 	+= -lsocketcan
 
 SRC 		= main.cxx
 SRC 		+= CanTest.cxx

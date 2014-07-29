@@ -3,7 +3,8 @@ for the Raspberry Pi Computer developed by the PANDA
 Collaboration.
 
 The kernel module is heavily based on the kernel module
-from Peak Systems, also published under the GNU General Public License.
+from Peak Systems (http://www.peak-system.com/),
+also published under the GNU General Public License.
 
 This version is for the Revision 2 of the Raspberry Pi.
 For revisions 1 see ../driver_rev1

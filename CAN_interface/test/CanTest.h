@@ -34,40 +34,40 @@
 #include <list>
 #include <string>
 
-#include "libpican.h"
-
 //_____ D E F I N I T I O N S __________________________________________________
 
 typedef struct can_frame can_frame_t;
-
-extern CANBUS* can;
 
 class CanTest {
 
  public:
   static bool exists();
   static CanTest* getInstance();
-  static void create( std::string& );
+  static void create( std::string&, std::string& );
 
   void transmitTest( unsigned int, unsigned int );
   void receiveTest();
-
-  inline double runtime() { return difftime( stop_, start_ ); }
-
+  void printDiag();
+  void setBitrate( unsigned int );
+  void CanClose();
 
  private:
   CanTest();
-  CanTest( std::string& );
+  CanTest( std::string&, std::string& );
   CanTest( const CanTest& );
   ~CanTest();
 
   void ParseMessages();
 
-  std::string filename_;
-  std::list<can_frame_t> msgList_;
-  time_t start_;
-  time_t stop_;
-  static CanTest* pinstance_;
+  int _socket;
+  std::string _filename;
+  std::string _devName;
+  std::list<can_frame_t*> _msgList;
+  time_t _start;
+  time_t _stop;
+  static CanTest* _pinstance;
+  int _counter;
+  unsigned int _bitrate;
 
 };
 

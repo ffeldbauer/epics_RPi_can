@@ -1,0 +1,26 @@
+diff --git drivers/net/can/sja1000/Kconfig drivers/net/can/sja1000/Kconfig
+index ff2ba86..d16aa80 100644
+--- drivers/net/can/sja1000/Kconfig
++++ drivers/net/can/sja1000/Kconfig
+@@ -107,4 +107,10 @@ config CAN_TSCAN1
+ 	  IRQ numbers are read from jumpers JP4 and JP5,
+ 	  SJA1000 IO base addresses are chosen heuristically (first that works).
+ 
++config CAN_SJA1000_RASPI
++	tristate "PANDA RasPi SJA1000 driver"
++	---help---
++	  This driver adds legacy support for the PANDA Raspberry Pi CAN bus
++	  Extension Board.
++
+ endif
+diff --git drivers/net/can/sja1000/Makefile drivers/net/can/sja1000/Makefile
+index b3d05cb..670c26b 100644
+--- drivers/net/can/sja1000/Makefile
++++ drivers/net/can/sja1000/Makefile
+@@ -13,5 +13,6 @@ obj-$(CONFIG_CAN_PEAK_PCMCIA) += peak_pcmcia.o
+ obj-$(CONFIG_CAN_PEAK_PCI) += peak_pci.o
+ obj-$(CONFIG_CAN_PLX_PCI) += plx_pci.o
+ obj-$(CONFIG_CAN_TSCAN1) += tscan1.o
++obj-$(CONFIG_CAN_SJA1000_RASPI) += sja1000_raspi.o
+ 
+ ccflags-$(CONFIG_CAN_DEBUG_DEVICES) := -DDEBUG

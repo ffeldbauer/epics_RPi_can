@@ -27,13 +27,23 @@
 
 // ANSI C++ headers
 #include <cerrno>
+#include <csignal>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <fcntl.h>
 #include <fstream>
-#include <iomanip>
 #include <iostream>
+#include <libsocketcan.h>
+#include <linux/can.h>
+#include <linux/can/raw.h>
+#include <net/if.h>
 #include <sstream>
-#include <stdint.h>
+#include <sys/ioctl.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/select.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 // local headers
@@ -41,9 +51,13 @@
 #include "Exceptions.h"
 
 //_____ D E F I N I T I O N S __________________________________________________
-CanTest* CanTest::pinstance_ = NULL;
+typedef  struct can_frame     can_frame_t;
+typedef  struct sockaddr_can  sockaddr_can_t;
+typedef  struct sockaddr      sockaddr_t;
+typedef  struct ifreq         ifreq_t; 
 
 //_____ G L O B A L S __________________________________________________________
+CanTest* CanTest::_pinstance = NULL;
 
 //_____ L O C A L S ____________________________________________________________
 
@@ -54,10 +68,35 @@ CanTest::CanTest() {
 
 //------------------------------------------------------------------------------
 
-CanTest::CanTest( std::string& filename )
-  : filename_(filename)
+CanTest::CanTest( std::string& filename, std::string& devicename )
+  : _filename( filename ),
+    _devName( devicename ),
+    _counter( 0 )
 { 
+  sockaddr_can_t addr;
+  ifreq_t ifr;
+
+  // open socket
+  _socket = socket( PF_CAN, SOCK_RAW, CAN_RAW );
+  if( _socket < 0 ) {
+    std::cerr << "Error while opening socket" << std::endl;
+    return;
+  }
+  
+  strcpy( ifr.ifr_name, _devName.c_str() );
+  ioctl( _socket, SIOCGIFINDEX, &ifr );
+ 
+  addr.can_family  = AF_CAN;
+  addr.can_ifindex = ifr.ifr_ifindex; 
+ 
+  if( bind( _socket, (sockaddr_t*)&addr, sizeof( addr ) ) < 0 ) {
+    std::cerr << "Error in socket bind" << std::endl;
+    close( _socket ); 
+    return;
+  }
+
   ParseMessages();
+
 }
 
 //------------------------------------------------------------------------------
@@ -68,41 +107,99 @@ CanTest::CanTest( const CanTest& rother ) {
 //------------------------------------------------------------------------------
 
 CanTest::~CanTest() {
-  msgList_.clear();
+  _msgList.clear();
 }
 
 //------------------------------------------------------------------------------
 
 bool CanTest::exists() {
-  return ( NULL != pinstance_ );
+  return ( NULL != _pinstance );
 }
 
 //------------------------------------------------------------------------------
 
 CanTest* CanTest::getInstance () {  
-  if ( NULL == pinstance_ ) throw BadConfig("CanTest base class has not been created");
-  return pinstance_; 
+  if ( NULL == _pinstance ) throw BadConfig("CanTest base class has not been created");
+  return _pinstance;
 }
 
 //------------------------------------------------------------------------------
 
-void CanTest::create( std::string& file ) {
-  if ( NULL != pinstance_ )
+void CanTest::create( std::string& file, std::string& device ) {
+  if ( NULL != _pinstance )
     std::cerr << "CanTest Singleton has already been created" << std::endl;
   else
-    pinstance_ = new CanTest( file );
+    _pinstance = new CanTest( file, device );
   return;
+}
+
+//------------------------------------------------------------------------------
+
+void CanTest::CanClose() {
+  printDiag();
+  close( _socket );
+}
+
+//------------------------------------------------------------------------------
+
+void CanTest::printDiag() {
+  struct can_device_stats* cds = new struct can_device_stats;
+  struct can_berr_counter* bc = new struct can_berr_counter;
+  int err = 0;
+  
+  err = can_get_device_stats( _devName.c_str(), cds );
+  if( err ) {
+    std::cerr << "Can't read diagnostics!" << std::endl;
+    return;
+  }
+  
+  err = can_get_berr_counter( _devName.c_str(), bc );
+  if( err ) {
+    std::cerr << "Can't read error counter!" << std::endl;
+    return;
+  }
+
+  double runtime = difftime( _stop, _start );
+  double fps = _counter / runtime;
+  
+  std::cout << "Test results:\n"
+            << "  Bus errors                      " << cds->bus_error << "\n"
+            << "  Changes to error warning state  " << cds->error_warning << "\n"
+            << "  Changes to error passive state  " << cds->error_passive << "\n"
+            << "  Changes to bus off state        " << cds->bus_off << "\n"
+            << "  Arbitration lost errors         " << cds->arbitration_lost << "\n"
+            << "  CAN controller re-starts        " << cds->restarts << "\n"
+            << "  CAN Tx errors                   " << bc->txerr << "\n"
+            << "  CAN Rx errors                   " << bc->rxerr << "\n\n"
+            << "  Bitrate                         " << _bitrate << "\n"
+            << "  Frames received/transmitted     " << _counter << "\n"
+            << "  Frames/s                        " << fps << "\n"
+            << std::endl;
+}
+
+//------------------------------------------------------------------------------
+
+void CanTest::setBitrate( unsigned int bitrate ){
+  _bitrate = bitrate;
+  int err = can_set_bitrate( _devName.c_str(), bitrate );
+  if( err ) {
+    std::stringstream errmsg;
+    errmsg << "setBitrate:\n"
+           << "Error " << errno << ": " << strerror( errno )
+           << std::endl;
+    throw CanFailure( errmsg );
+  }
 }
 
 //------------------------------------------------------------------------------
 
 void CanTest::ParseMessages() {
   
-  std::ifstream input( filename_.c_str(), std::ios_base::in );
+  std::ifstream input( _filename.c_str(), std::ios_base::in );
   std::string line;
   
   while( std::getline( input, line ) ) {
-    can_frame_t frame;
+    can_frame_t *pframe = new can_frame_t;
 
     // handle comments in config file
     size_t comment;
@@ -115,17 +212,17 @@ void CanTest::ParseMessages() {
     char rtr;
     char ide;
     unsigned int dummydlc = 0;
-    parse >> rtr >> ide >> std::hex >> frame.can_id >> dummydlc;
+    parse >> rtr >> ide >> std::hex >> pframe->can_id >> dummydlc;
     switch( rtr ) {
     case 'm': break;
-    case 'r': frame.can_id |= CAN_RTR_FLAG; break;
+    case 'r': pframe->can_id |= CAN_RTR_FLAG; break;
     default:
       std::cerr << "Invalid format: '"<< rtr << "' in '" << line << "'" << std::endl;
       continue;
     }
     switch( ide ) {
     case 's': break;
-    case 'e': frame.can_id |= CAN_EFF_FLAG; break;
+    case 'e': pframe->can_id |= CAN_EFF_FLAG; break;
     default:
       std::cerr << "Invalid type: '"<< ide << "' in '" << line << "'" << std::endl;
       continue;
@@ -135,11 +232,11 @@ void CanTest::ParseMessages() {
       std::cerr << "Invalid length: '"<< dummydlc << "' in '" << line << "'" << std::endl;
       continue;
     }
-    frame.can_dlc = (uint8_t)(dummydlc & 8);
-    for ( unsigned char i = 0; i < frame.can_dlc; i++ )
-      parse >> std::hex >> frame.data[i];
+    pframe->can_dlc = (unsigned char)(dummydlc & 8);
+    for ( unsigned char i = 0; i < pframe->can_dlc; i++ )
+      parse >> std::hex >> pframe->data[i];
 
-    msgList_.push_back( frame );
+    _msgList.push_back( pframe );
 
   }
   input.close();
@@ -150,44 +247,47 @@ void CanTest::ParseMessages() {
 void CanTest::transmitTest( unsigned int dwMaxTimeInterval, unsigned int dwMaxLoop ) {
   
   double scale = ( dwMaxTimeInterval * 1000.0 ) / ( RAND_MAX + 1.0 );
-  std::list<can_frame_t>::iterator iter;
+  std::list<can_frame_t*>::iterator iter;
   
   if( 0 != dwMaxLoop ) {
 
-    time( &start_ );
+    time( &_start );
     for ( unsigned int count = 0; count < dwMaxLoop; count++ ) {
-      for ( iter = msgList_.begin(); iter != msgList_.end(); iter++ ) {
+      for ( iter = _msgList.begin(); iter != _msgList.end(); iter++ ) {
         
         // send the message
-        if( CAN_Write( can, &(*iter) ) ) {
+        int nbytes = write( _socket, (*iter), sizeof(can_frame_t) );
+        if ( 0 > nbytes ) {
           std::stringstream errmsg;
-          errmsg << "transmitest: CAN_Write()\n"
+          errmsg << "transmitest: write()\n"
                  << "Error " << errno << ": " << strerror( errno )
                  << std::endl;
           throw CanFailure( errmsg );
         }
-        
+        _counter++;
         // wait some time before the invocation
         if( dwMaxTimeInterval )
           usleep( (__useconds_t)( scale * rand() ) );
       }
     }
-    time( &stop_ );
+    time( &_stop );
 
   } else {
 
     while( true ) {
-      for ( iter = msgList_.begin(); iter != msgList_.end(); iter++ ) {
+      for ( iter = _msgList.begin(); iter != _msgList.end(); iter++ ) {
         
         // send the message
-        if( CAN_Write( can, &(*iter) ) ) {
+        int nbytes = write( _socket, (*iter), sizeof(can_frame_t) );
+        if ( 0 > nbytes ) {
           std::stringstream errmsg;
-          errmsg << "transmitest: CAN_Write()\n"
+          errmsg << "transmitest: write()\n"
                  << "Error " << errno << ": " << strerror( errno )
                  << std::endl;
           throw CanFailure( errmsg );
         }
-        
+        _counter++;
+
         // wait some time before the invocation
         if( dwMaxTimeInterval )
           usleep( (__useconds_t)( scale * rand() ) );
@@ -201,15 +301,17 @@ void CanTest::transmitTest( unsigned int dwMaxTimeInterval, unsigned int dwMaxLo
 
 void CanTest::receiveTest( ) {
   while( true ) {
-    can_frame_t frame;
-    if( CAN_Read( can, &frame ) )  {
+    can_frame_t *pframe = new can_frame_t;
+    int nbytes = read( _socket, pframe, sizeof(can_frame_t) );
+    if ( 0 > nbytes ) {
       std::stringstream errmsg;
-      errmsg << "receivetest: CAN_Read()\n"
+      errmsg << "receivetest: read()\n"
              << "Error " << errno << ": " << strerror( errno )
              << std::endl;
       throw CanFailure( errmsg );
     } else  {
-      msgList_.push_back( frame );
+      _msgList.push_back( pframe );
+      _counter++;
     }
   }  
 }

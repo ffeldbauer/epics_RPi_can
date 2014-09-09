@@ -71,7 +71,10 @@ CanTest::CanTest() {
 CanTest::CanTest( std::string& filename, std::string& devicename )
   : _filename( filename ),
     _devName( devicename ),
-    _counter( 0 )
+    _counter( 0 ),
+    _start( 0 ),
+    _stop( 0 ),
+    _open( false )
 { 
   sockaddr_can_t addr;
   ifreq_t ifr;
@@ -94,9 +97,9 @@ CanTest::CanTest( std::string& filename, std::string& devicename )
     close( _socket ); 
     return;
   }
+  _open = true;
 
   ParseMessages();
-
 }
 
 //------------------------------------------------------------------------------
@@ -136,8 +139,10 @@ void CanTest::create( std::string& file, std::string& device ) {
 //------------------------------------------------------------------------------
 
 void CanTest::CanClose() {
-  printDiag();
-  close( _socket );
+  if ( _socket ){
+    printDiag();
+    close( _socket );
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -159,6 +164,7 @@ void CanTest::printDiag() {
     return;
   }
 
+  if ( 0 == _stop ) time( &_stop );
   double runtime = difftime( _stop, _start );
   double fps = _counter / runtime;
   
@@ -249,9 +255,8 @@ void CanTest::transmitTest( unsigned int dwMaxTimeInterval, unsigned int dwMaxLo
   double scale = ( dwMaxTimeInterval * 1000.0 ) / ( RAND_MAX + 1.0 );
   std::list<can_frame_t*>::iterator iter;
   
+  time( &_start );
   if( 0 != dwMaxLoop ) {
-
-    time( &_start );
     for ( unsigned int count = 0; count < dwMaxLoop; count++ ) {
       for ( iter = _msgList.begin(); iter != _msgList.end(); iter++ ) {
         
@@ -270,7 +275,6 @@ void CanTest::transmitTest( unsigned int dwMaxTimeInterval, unsigned int dwMaxLo
           usleep( (__useconds_t)( scale * rand() ) );
       }
     }
-    time( &_stop );
 
   } else {
 
@@ -293,25 +297,46 @@ void CanTest::transmitTest( unsigned int dwMaxTimeInterval, unsigned int dwMaxLo
           usleep( (__useconds_t)( scale * rand() ) );
       }
     }
-
   }
+  time( &_stop );
 }
 
 //------------------------------------------------------------------------------
 
-void CanTest::receiveTest( ) {
-  while( true ) {
-    can_frame_t *pframe = new can_frame_t;
-    int nbytes = read( _socket, pframe, sizeof(can_frame_t) );
-    if ( 0 > nbytes ) {
-      std::stringstream errmsg;
-      errmsg << "receivetest: read()\n"
-             << "Error " << errno << ": " << strerror( errno )
-             << std::endl;
-      throw CanFailure( errmsg );
-    } else  {
-      _msgList.push_back( pframe );
-      _counter++;
+void CanTest::receiveTest( unsigned int dwMaxLoop ) {
+  time( &_start );
+  if( 0 != dwMaxLoop ) {
+    for ( unsigned int count = 0; count < dwMaxLoop; count++ ) {
+      can_frame_t *pframe = new can_frame_t;
+      int nbytes = read( _socket, pframe, sizeof(can_frame_t) );
+      if ( 0 > nbytes ) {
+        std::stringstream errmsg;
+        errmsg << "receivetest: read()\n"
+               << "Error " << errno << ": " << strerror( errno )
+               << std::endl;
+        throw CanFailure( errmsg );
+      } else  {
+        _msgList.push_back( pframe );
+        _counter++;
+      }
+    }  
+       
+  } else {     
+  
+    while( true ) {
+      can_frame_t *pframe = new can_frame_t;
+      int nbytes = read( _socket, pframe, sizeof(can_frame_t) );
+      if ( 0 > nbytes ) {
+        std::stringstream errmsg;
+        errmsg << "receivetest: read()\n"
+               << "Error " << errno << ": " << strerror( errno )
+               << std::endl;
+        throw CanFailure( errmsg );
+      } else  {
+        _msgList.push_back( pframe );
+        _counter++;
+      }
     }
-  }  
+  }
+  time( &_stop );
 }

@@ -1,10 +1,11 @@
-This is the kernel module of the CAN bus interface
-for the Raspberry Pi Computer developed by the PANDA
-Collaboration.
+This is a socketCAN driver for the PANDA Raspberry Pi CANbus Extension Board.
 
-The kernel module is heavily based on the kernel module
-from Peak Systems (http://www.peak-system.com/),
-also published under the GNU General Public License.
+To use this driver copy 'sja1000_raspi.c' into '<kernelsrc>/drivers/net/can/sja1000/'
+and apply the 'kernel.patch' in '<kernelsrc>'.
+Run `make menuconfig` and select the 'PANDA RasPi SJA1000 driver' under
+→ Networking support → CAN bus subsystem support → CAN Device Drivers → Philips/NXP SJA1000 devices
+Rebuild the kernel sources and install the new kernel
 
-This version is for the Revision 2 of the Raspberry Pi.
-For revisions 1 see ../driver_rev1
+Tested with kernel verison 3.12.y (https://github.com/raspberrypi/linux)
+commit: 0b8e8118dd2c9440bb7a2da1a19e15e324d3c09b "Linux 3.12.25"
+

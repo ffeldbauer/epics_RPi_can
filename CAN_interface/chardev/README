@@ -1,0 +1,8 @@
+This is the (old) chardev version of the kernel module for the
+PANDA Raspberry Pi CANbus Extension Board.
+
+`make` will build the kernel module, support library and test program.
+
+The kernel module is heavily based on the kernel module
+from Peak Systems (http://www.peak-system.com/),
+also published under the GNU General Public License.

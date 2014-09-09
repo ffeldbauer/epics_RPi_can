@@ -7,33 +7,31 @@ The following devices controlled via CAN bus interfaces are supported:
  - PANDA-EMC light pulser
  - TMCM142 1-axis stepper controller/driver (via CAN, http://www.mocontronic.de/de/katalog/motorsteuerungen/TMCM-142-IF)
 
-As CAN interfaces currently interfaces from PEAK System (http://www.peak-system.com)
-and an adaptor board for the Raspberry Pi Computer developed by the PANDA collaboration
-are supported.
-
 Dependencies
 ============
 
  CAN_interface:
   - For the kernel module to compile you need the kernel sources and headers
+  - For the test program the libsocketcan is needed
 
  drvAsynCan
-  - EPICS base 3.14.12.3 or later (http://www.aps.anl.gov/epics/)
-  - AsynDriver 4-21 or later (http://www.aps.anl.gov/epics/modules/soft/asyn/)
-  - PEAK Systems CAN Driver or CAN driver for Raspberry Pi Adaptor Board
+  - EPICS base 3.14.12.4 or later (http://www.aps.anl.gov/epics/)
+  - AsynDriver 4-22 or later (http://www.aps.anl.gov/epics/modules/soft/asyn/)
+  - optionally the libsocketcan is needed
 
  dallas1wire
-  - EPICS base 3.14.12.3 or later (http://www.aps.anl.gov/epics/)
+  - EPICS base 3.14.12.4 or later (http://www.aps.anl.gov/epics/)
 
 Install
 =======
 
  CAN_interface:
-  1. simple run 'make' follwed by 'make install' to install the driver and library
+  1. refer to CAN_interface/driver/README
 
  drvAsynCan:
   1. Edit configure/RELEASE and change the paths to ASYN and EPICS_BASE
-  2. Type `make' to compile the package.
+  2. Optionally create configure/RELEASE.Common.<arch> and set LIBSOCKETCAN_INCLUDE and LIBSOCKETCAN_LIB
+  3. Type `make' to compile the package.
 
  dallas1wire:
   1. Edit configure/RELEASE and change the paths to EPICS_BASE
@@ -42,5 +40,4 @@ Install
 Usage
 =====
 
-Refer to drvAsynCan/documentation/drvAsynCan.html for more information
-on how to use the asynPortDrivers
+Refer to the wiki page on github (https://github.com/ffeldbauer/epics_RPi_can/wiki)

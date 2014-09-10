@@ -1,3 +1,6 @@
+PANDA DCS epicsRPiCAN package
+=============================
+
 This package is used by the PANDA collaboration for EPICS device support.
 The following devices controlled via CAN bus interfaces are supported:
 -  CAN interface (as lower-level driver used by all other drivers)

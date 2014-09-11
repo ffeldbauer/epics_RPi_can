@@ -71,9 +71,9 @@ CanTest::CanTest() {
 CanTest::CanTest( std::string& filename, std::string& devicename )
   : _filename( filename ),
     _devName( devicename ),
-    _counter( 0 ),
     _start( 0 ),
     _stop( 0 ),
+    _counter( 0 ),
     _open( false )
 { 
   sockaddr_can_t addr;

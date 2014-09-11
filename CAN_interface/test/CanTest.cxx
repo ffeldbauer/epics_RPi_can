@@ -254,7 +254,14 @@ void CanTest::transmitTest( unsigned int dwMaxTimeInterval, unsigned int dwMaxLo
   
   double scale = ( dwMaxTimeInterval * 1000.0 ) / ( RAND_MAX + 1.0 );
   std::list<can_frame_t*>::iterator iter;
-  
+
+  // Set size of CAN socket send buffer to minimum
+  int sndBufNew = 0;
+  if( setsockopt( _socket, SOL_SOCKET, SO_SNDBUF, (void *)&sndBufNew, sizeof( sndBufNew ) ) < 0 ){
+    perror( "Error while set socket option SNDBUF" );
+    return;
+  }
+
   time( &_start );
   if( 0 != dwMaxLoop ) {
     for ( unsigned int count = 0; count < dwMaxLoop; count++ ) {

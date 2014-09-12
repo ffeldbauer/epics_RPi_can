@@ -49,6 +49,7 @@ class CanTest {
   void receiveTest( unsigned int );
   void printDiag();
   void setBitrate( unsigned int );
+  bool CanOpen();
   void CanClose();
 
  private:

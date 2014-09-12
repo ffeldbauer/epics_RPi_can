@@ -151,7 +151,8 @@ int main( int argc, char* argv[] ) {
   }
 
   CanTest::create( filename, devicename );
-  //  CanTest::getInstance()->setBitrate( bitrate );
+  CanTest::getInstance()->setBitrate( bitrate );
+  CanTest::getInstance()->CanOpen();
     
   signal( SIGTERM, signal_handler );
   signal( SIGINT, signal_handler );
@@ -164,6 +165,7 @@ int main( int argc, char* argv[] ) {
   } catch( const CanFailure& e ) {
     std::cerr << e.what() << std::endl;
   }
+
   CanTest::getInstance()->CanClose();
 
   return 0;

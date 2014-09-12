@@ -76,29 +76,6 @@ CanTest::CanTest( std::string& filename, std::string& devicename )
     _counter( 0 ),
     _open( false )
 { 
-  sockaddr_can_t addr;
-  ifreq_t ifr;
-
-  // open socket
-  _socket = socket( PF_CAN, SOCK_RAW, CAN_RAW );
-  if( _socket < 0 ) {
-    std::cerr << "Error while opening socket" << std::endl;
-    return;
-  }
-  
-  strcpy( ifr.ifr_name, _devName.c_str() );
-  ioctl( _socket, SIOCGIFINDEX, &ifr );
- 
-  addr.can_family  = AF_CAN;
-  addr.can_ifindex = ifr.ifr_ifindex; 
- 
-  if( bind( _socket, (sockaddr_t*)&addr, sizeof( addr ) ) < 0 ) {
-    std::cerr << "Error in socket bind" << std::endl;
-    close( _socket ); 
-    return;
-  }
-  _open = true;
-
   ParseMessages();
 }
 
@@ -138,10 +115,40 @@ void CanTest::create( std::string& file, std::string& device ) {
 
 //------------------------------------------------------------------------------
 
+bool CanTest::CanOpen() {
+  sockaddr_can_t addr;
+  ifreq_t ifr;
+
+  // open socket
+  _socket = socket( PF_CAN, SOCK_RAW, CAN_RAW );
+  if( _socket < 0 ) {
+    std::cerr << "Error while opening socket" << std::endl;
+    return false;
+  }
+  
+  strcpy( ifr.ifr_name, _devName.c_str() );
+  ioctl( _socket, SIOCGIFINDEX, &ifr );
+ 
+  addr.can_family  = AF_CAN;
+  addr.can_ifindex = ifr.ifr_ifindex; 
+ 
+  if( bind( _socket, (sockaddr_t*)&addr, sizeof( addr ) ) < 0 ) {
+    std::cerr << "Error in socket bind" << std::endl;
+    close( _socket ); 
+    return false;
+  }
+  std::cout << "Opened CAN socket " << _socket << std::endl;
+  _open = true;
+}
+
+//------------------------------------------------------------------------------
+
 void CanTest::CanClose() {
   if ( _socket ){
     printDiag();
     close( _socket );
+    _open = false;
+    std::cout << "Closed CAN socket " << _socket << std::endl;
   }
 }
 

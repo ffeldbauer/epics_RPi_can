@@ -31,6 +31,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
 #include <fcntl.h>
 #include <fstream>
 #include <iostream>
@@ -122,7 +123,7 @@ bool CanTest::CanOpen() {
   // open socket
   _socket = socket( PF_CAN, SOCK_RAW, CAN_RAW );
   if( _socket < 0 ) {
-    std::cerr << "Error while opening socket" << std::endl;
+    perror( "Error while opening socket" );
     return false;
   }
   
@@ -133,18 +134,19 @@ bool CanTest::CanOpen() {
   addr.can_ifindex = ifr.ifr_ifindex; 
  
   if( bind( _socket, (sockaddr_t*)&addr, sizeof( addr ) ) < 0 ) {
-    std::cerr << "Error in socket bind" << std::endl;
+    perror( "Error in socket bind" );
     close( _socket ); 
     return false;
   }
   std::cout << "Opened CAN socket " << _socket << std::endl;
   _open = true;
+  return true;
 }
 
 //------------------------------------------------------------------------------
 
 void CanTest::CanClose() {
-  if ( _socket ){
+  if ( _open ){
     printDiag();
     close( _socket );
     _open = false;
@@ -193,66 +195,100 @@ void CanTest::printDiag() {
 //------------------------------------------------------------------------------
 
 void CanTest::setBitrate( unsigned int bitrate ){
-  _bitrate = bitrate;
-  int err = can_set_bitrate( _devName.c_str(), bitrate );
+  int err = 0;
+  bool wasOpen = false;
+
+  if( _open ) { CanClose(); wasOpen = true; }
+
+  err = can_do_stop( _devName.c_str() );
   if( err ) {
-    std::stringstream errmsg;
-    errmsg << "setBitrate:\n"
-           << "Error " << errno << ": " << strerror( errno )
-           << std::endl;
-    throw CanFailure( errmsg );
+    perror( "Could not bring interface down" );
+    exit(1);
   }
+  err = can_set_bitrate( _devName.c_str(), bitrate );
+  if( err ) {
+    perror( "Could not set bitrate" );
+    exit(1);
+  }
+  err = can_do_start( _devName.c_str() );
+  if( err ) {
+    perror( "Could not bring interface up" );
+    exit(1);
+  }
+
+  _bitrate = bitrate;
+
+  if( wasOpen ) CanOpen();
 }
 
 //------------------------------------------------------------------------------
 
 void CanTest::ParseMessages() {
+  if( !_filename.empty ) {
+    std::ifstream input( _filename.c_str(), std::ios_base::in );
+    std::string line;
   
-  std::ifstream input( _filename.c_str(), std::ios_base::in );
-  std::string line;
-  
-  while( std::getline( input, line ) ) {
-    can_frame_t *pframe = new can_frame_t;
+    while( std::getline( input, line ) ) {
+      can_frame_t *pframe = new can_frame_t;
 
-    // handle comments in config file
-    size_t comment;
-    if ( ( comment = line.find('#') ) != std::string::npos )
-      line.erase( comment ); // erase everthing after first '#' from string
-    
-    if ( 0 == line.length() ) continue; // string is empty, no need to parse it
+      // handle comments in config file
+      size_t comment;
+      if ( ( comment = line.find('#') ) != std::string::npos )
+        line.erase( comment ); // erase everthing after first '#' from string
       
-    std::istringstream parse( line );
-    char rtr;
-    char ide;
-    unsigned int dummydlc = 0;
-    parse >> rtr >> ide >> std::hex >> pframe->can_id >> dummydlc;
-    switch( rtr ) {
-    case 'm': break;
-    case 'r': pframe->can_id |= CAN_RTR_FLAG; break;
-    default:
-      std::cerr << "Invalid format: '"<< rtr << "' in '" << line << "'" << std::endl;
-      continue;
-    }
-    switch( ide ) {
-    case 's': break;
-    case 'e': pframe->can_id |= CAN_EFF_FLAG; break;
-    default:
-      std::cerr << "Invalid type: '"<< ide << "' in '" << line << "'" << std::endl;
-      continue;
-    }
+      if ( 0 == line.length() ) continue; // string is empty, no need to parse it
+        
+      std::istringstream parse( line );
+      char rtr;
+      char ide;
+      unsigned int dummydlc = 0;
+      parse >> rtr >> ide >> std::hex >> pframe->can_id >> dummydlc;
+      switch( rtr ) {
+      case 'm': break;
+      case 'r': pframe->can_id |= CAN_RTR_FLAG; break;
+      default:
+        std::cerr << "Invalid format: '"<< rtr << "' in '" << line << "'" << std::endl;
+        continue;
+      }
+      switch( ide ) {
+      case 's': break;
+      case 'e': pframe->can_id |= CAN_EFF_FLAG; break;
+      default:
+        std::cerr << "Invalid type: '"<< ide << "' in '" << line << "'" << std::endl;
+        continue;
+      }
 
-    if ( 8 < dummydlc ) {
-      std::cerr << "Invalid length: '"<< dummydlc << "' in '" << line << "'" << std::endl;
-      continue;
+      if ( 8 < dummydlc ) {
+        std::cerr << "Invalid length: '"<< dummydlc << "' in '" << line << "'" << std::endl;
+        continue;
+      }
+      pframe->can_dlc = (unsigned char)(dummydlc & 8);
+      for ( unsigned char i = 0; i < pframe->can_dlc; i++ )
+        parse >> std::hex >> pframe->data[i];
+  
+      _msgList.push_back( pframe );
+  
     }
-    pframe->can_dlc = (unsigned char)(dummydlc & 8);
-    for ( unsigned char i = 0; i < pframe->can_dlc; i++ )
-      parse >> std::hex >> pframe->data[i];
+    input.close();
+
+  } else {
+
+  // create 20 random CAN frames for transmit tests
+  for( int i = 0; i < 20; i++ ) {
+    can_frame_t *pframe = new can_frame_t;
+    time_t t;
+
+    time(&t);
+    srand( (unsigned int)t );
+
+    pframe->can_id = rand() % CAN_EFF_MASK;
+    if ( pframe->can_id > CAN_SFF_MASK ) pframe->can_id |= CAN_EFF_FLAG;
+    pframe->can_dlc = rand() % 9;
+    for( unsigned int j = 0; j < pframe->can_dlc; j++ )  pframe->data[i] = rand() % 255;
 
     _msgList.push_back( pframe );
 
   }
-  input.close();
 }
 
 //------------------------------------------------------------------------------
@@ -318,10 +354,10 @@ void CanTest::transmitTest( unsigned int dwMaxTimeInterval, unsigned int dwMaxLo
 //------------------------------------------------------------------------------
 
 void CanTest::receiveTest( unsigned int dwMaxLoop ) {
+  can_frame_t *pframe = new can_frame_t;
   time( &_start );
   if( 0 != dwMaxLoop ) {
     for ( unsigned int count = 0; count < dwMaxLoop; count++ ) {
-      can_frame_t *pframe = new can_frame_t;
       int nbytes = read( _socket, pframe, sizeof(can_frame_t) );
       if ( 0 > nbytes ) {
         std::stringstream errmsg;
@@ -338,7 +374,6 @@ void CanTest::receiveTest( unsigned int dwMaxLoop ) {
   } else {     
   
     while( true ) {
-      can_frame_t *pframe = new can_frame_t;
       int nbytes = read( _socket, pframe, sizeof(can_frame_t) );
       if ( 0 > nbytes ) {
         std::stringstream errmsg;

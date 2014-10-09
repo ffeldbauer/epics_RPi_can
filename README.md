@@ -31,7 +31,6 @@ dallas-1-wire to the Raspberry Pi Computer
 #### drvAsynCan
 -  [EPICS base 3.14.12.4 or later](http://www.aps.anl.gov/epics/)
 -  [AsynDriver 4-22 or later](http://www.aps.anl.gov/epics/modules/soft/asyn/)
--  Optionally libsocketcan
 
 #### dallas1wire
 -  [EPICS base 3.14.12.4 or later](http://www.aps.anl.gov/epics/)
@@ -43,9 +42,7 @@ dallas-1-wire to the Raspberry Pi Computer
 
 #### drvAsynCan
  1.  Edit configure/RELEASE and change the paths to ASYN and EPICS_BASE
- 2.  Optionally create configure/RELEASE.Common.&lt;arch&gt; and set LIBSOCKETCAN_INCLUDE
-     and LIBSOCKETCAN_LIB
- 3.  Type `make` to compile the package.
+ 2.  Type `make` to compile the package.
 
 #### dallas1wire
  1.  Edit configure/RELEASE and change the paths to EPICS_BASE

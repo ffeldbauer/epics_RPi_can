@@ -1,4 +1,7 @@
 /*
+ * Based on sja1000_isa.c 
+ * Copyright (C) 2009 Wolfgang Grandegger <wg@grandegger.com>
+ *
  * Copyright (C) 2014 Florian Feldbauer <florian@ep1.ruhr-uni-bochum.de>
  *                    - Ruhr-Universitaet Bochum, Lehrstuhl fuer Experimentalphysik I
  *
@@ -27,7 +30,6 @@
 #include <linux/io.h>
 #include <linux/can/dev.h>
 #include <linux/can/platform/sja1000.h>
-
 #include <linux/types.h>
 #include <linux/errno.h>
 #include <linux/gpio.h>
@@ -41,10 +43,11 @@ MODULE_DESCRIPTION( "Socket-CAN driver for SJA1000 on the PANDA Raspberry Pi CAN
 MODULE_SUPPORTED_DEVICE("PANDA Raspberry Pi CAN extension Board");
 MODULE_LICENSE( "GPL v2" );
 
-#define GPIOFSEL(x)  (0x00+(x)*4)
-#define GPIOSET(x)   (0x1c+(x)*4)
-#define GPIOCLR(x)   (0x28+(x)*4)
-#define GPIOLEV(x)   (0x34+(x)*4)
+/* define offset for used registers, refer to page 90 of the BCM2835 ARM Peripherals manual */
+#define GPIOFSEL(x)  (0x00+(x)*4) /* GPIO Function Select  */
+#define GPIOSET(x)   (0x1c+(x)*4) /* GPIO Pin Output Set   */
+#define GPIOCLR(x)   (0x28+(x)*4) /* GPIO Pin Output Clear */
+#define GPIOLEV(x)   (0x34+(x)*4) /* GPIO Pin Level        */
 
 #define DRV_NAME     "sja1000_raspi"
 #define CLK_DEFAULT  16000000                                     /* 16 MHz ext clock */
@@ -87,7 +90,7 @@ static u8 nWR = 10;
 static u8 nCS = 18;
 static u8 nIRQ = 4;
 
-/* Masks for LEV/SET/CLR registers to get GPIOs used as A/D lines */
+/* Masks for LEV/SET/CLR registers to select GPIOs used as A/D lines */
 static const u32 gpioMaskL = (  7 <<  7 );
 static const u32 gpioMaskM = (  1 << 27 );
 static const u32 gpioMaskH = ( 15 << 22 );
@@ -95,8 +98,8 @@ static const u32 gpioMask  = (  7 <<  7 ) | ( 15 << 22 ) | (  1 << 27 );
 
 /*
  * Masks to switch direction of GPIOs used as A/D lines
- * To switch pin g to input use GPIOFSEL( g/10 ) &= ~ ( 7 <<  (( g % 10 ) * 3 ) );
- * To switch pin g to output use GPIOFSEL( g/10 ) |= ( 1 <<  (( g % 10 ) * 3 ) );
+ * To switch pin g to input  use GPIOFSEL( g/10 ) &= ~( 7 <<  (( g % 10 ) * 3 ) );
+ * To switch pin g to output use GPIOFSEL( g/10 ) |=  ( 1 <<  (( g % 10 ) * 3 ) );
  */
 static const u32 gpioFSEL0_InpMask = ~( ( 7 << 21 ) | ( 7 << 24 ) | ( 7 << 27 ) );
 static const u32 gpioFSEL0_OutMask = ( 1 << 21 ) | ( 1 << 24 ) | ( 1 << 27 );
@@ -158,7 +161,7 @@ static u8 sja1000_raspi_read_reg( const struct sja1000_priv *priv, int reg ) {
   iowrite32( ( 1 << nCS ) | ( 1 << nRD ), base + GPIOSET(0) );
   wmb();
 
-  printk( KERN_INFO "%s: Read register %p %i: 0x%02x\n", DRV_NAME, base, reg, data );
+  /*printk( KERN_INFO "%s: Read register %i: 0x%02x\n", DRV_NAME, reg, data );*/
 
   return data;
 }
@@ -169,6 +172,8 @@ static void sja1000_raspi_write_reg( const struct sja1000_priv *priv,
                                      int reg, u8 val ){
   u32 buffer;
   void __iomem *base = priv->reg_base;
+
+  /*printk( KERN_INFO "%s: Write register %i: 0x%02x\n", DRV_NAME, reg, val );*/
 
   /* Set AD0..7 to outoput */
   buffer  = ioread32( base + GPIOFSEL(0) );
@@ -258,7 +263,7 @@ static int sja1000_raspi_probe( struct platform_device *pdev ) {
 
 static int sja1000_raspi_remove( struct platform_device *pdev ) {
   struct net_device *dev = platform_get_drvdata( pdev );
-  //struct sja1000_priv *priv = netdev_priv( dev );
+  /*struct sja1000_priv *priv = netdev_priv( dev );*/
 
   unregister_sja1000dev( dev );
   free_sja1000dev( dev );
@@ -365,3 +370,4 @@ static void __exit sja1000_raspi_exit( void ) {
 
 module_init( sja1000_raspi_init );
 module_exit( sja1000_raspi_exit );
+

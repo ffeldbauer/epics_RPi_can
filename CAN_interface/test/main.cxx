@@ -31,7 +31,6 @@
 #include <cstring>
 #include <fcntl.h>
 #include <iostream>
-#include <libsocketcan.h>
 #include <sstream>
 #include <unistd.h>
 
@@ -43,7 +42,6 @@
 //_____ G L O B A L S __________________________________________________________
 
 //_____ L O C A L S ____________________________________________________________
-static const std::string  DEFAULT_FILE    = "msg";
 static const std::string  DEFAULT_DEV     = "can0";
 static const unsigned int DEFAULT_BITRATE = 125000;
 
@@ -59,7 +57,8 @@ static void helpmsg() {
   std::cout << "rpi_can_test - a small test program which sends/receives CAN messages.\n"
             << "usage:   rpi_can_test [-f=filename] [-d=device] [-b=bitrate] [-n=count] [-r=msec] [-?] mode\n"
             << "options: mode  - mandatory modus {receive|transmit}.\n"
-            << "         -f    - name of message description file, default = " << DEFAULT_FILE << "\n"
+            << "         -f    - name of message description file\n"
+            << "                 (if no filename is given, 20 random messages are generated)\n"
             << "         -d    - path to device file, default=" << DEFAULT_DEV << "\n"
             << "         -b    - Bitrate, default = " << DEFAULT_BITRATE << "\n"
             << "         -n    - maximum number of messages to send/receive, default=INF\n"
@@ -137,18 +136,8 @@ int main( int argc, char* argv[] ) {
     }
   }
 
-  if ( filename.empty() )    filename   = DEFAULT_FILE;
   if ( devicename.empty() )  devicename = DEFAULT_DEV;
   if ( 0 == bitrate )        bitrate    = DEFAULT_BITRATE;
-
-  int err = can_set_bitrate( devicename.c_str(), bitrate );
-  if( err ) {
-    std::stringstream errmsg;
-    errmsg << "setBitrate:\n"
-           << "Error " << errno << ": " << strerror( errno )
-           << std::endl;
-    throw CanFailure( errmsg );
-  }
 
   CanTest::create( filename, devicename );
   CanTest::getInstance()->setBitrate( bitrate );

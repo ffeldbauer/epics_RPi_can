@@ -2,6 +2,10 @@ drvAsynCan/db/
 drvAsynCan/dbd/
 drvAsynCan/lib/
 drvAsynCan/bin/
+dallas1wire/db/
+dallas1wire/dbd/
+dallas1wire/lib/
+dallas1wire/bin/
 O.linux-x86_64/
 O.linux-arm/
 O.Common/

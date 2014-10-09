@@ -11,7 +11,7 @@ EXTRALIBDIRS 	=
 
 OPT 		= 
 
-CPPFLAGS 	+= -O$(OPT) -Wall
+CPPFLAGS 	+= -O$(OPT) -Wall -std=gnu++0x
 CPPFLAGS 	+= $(patsubst %,-I%,$(EXTRAINCDIRS))
 
 LDFLAGS 	+= $(patsubst %,-L%,$(EXTRALIBDIRS))

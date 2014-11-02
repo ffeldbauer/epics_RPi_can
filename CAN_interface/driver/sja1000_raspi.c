@@ -222,6 +222,38 @@ static int sja1000_raspi_probe( struct platform_device *pdev ) {
   void __iomem *base = __io_address( GPIO_BASE );
   int err;
 
+  /* request used GPIO lines */
+  err = gpio_request_one( ALE, GPIOF_OUT_INIT_LOW, "ALE" );
+  if( err ) {
+    printk( KERN_ERR "%s: Cannot request GPIO %d! Error: %d\n", DRV_NAME, ALE, err );
+    goto exit;
+  }
+  err = gpio_request_one( nRD, GPIOF_OUT_INIT_HIGH, "nRD" );
+  if( err ) {
+    printk( KERN_ERR "%s: Cannot request GPIO %d! Error: %d\n", DRV_NAME, nRD, err );
+    goto exit;
+  }
+  err = gpio_request_one( nWR, GPIOF_OUT_INIT_HIGH, "nWR" );
+  if( err ) {
+    printk( KERN_ERR "%s: Cannot request GPIO %d! Error: %d\n", DRV_NAME, nWR, err );
+    goto exit;
+  }
+  err = gpio_request_one( nCS, GPIOF_OUT_INIT_HIGH, "nCS" );
+  if( err ) {
+    printk( KERN_ERR "%s: Cannot request GPIO %d! Error: %d\n", DRV_NAME, nCS, err );
+    goto exit;
+  }
+  err = gpio_request_array( ADi, ARRAY_SIZE(ADi) );
+  if( err ) {
+    printk( KERN_ERR "%s: Cannot request GPIO array for AD ports! Error: %d\n", DRV_NAME, err );
+    goto exit;
+  }
+  err = gpio_request_one( nIRQ, GPIOF_IN, "nINT" );
+  if( err ) {
+    printk( KERN_ERR "%s: Cannot request GPIO %d! Error: %d\n", DRV_NAME, nIRQ, err );
+    goto exit;
+  }
+
   dev = alloc_sja1000dev( 0 );
   if ( !dev ) {
     err = -ENOMEM;
@@ -256,6 +288,12 @@ static int sja1000_raspi_probe( struct platform_device *pdev ) {
   return 0;
 
  exit:
+  gpio_free( ALE );
+  gpio_free( nRD );
+  gpio_free( nWR );
+  gpio_free( nCS );
+  gpio_free_array( ADi, ARRAY_SIZE(ADi) );
+  gpio_free( nIRQ );
   return err;
 }
 
@@ -267,6 +305,13 @@ static int sja1000_raspi_remove( struct platform_device *pdev ) {
 
   unregister_sja1000dev( dev );
   free_sja1000dev( dev );
+
+  gpio_free( ALE );
+  gpio_free( nRD );
+  gpio_free( nWR );
+  gpio_free( nCS );
+  gpio_free_array( ADi, ARRAY_SIZE(ADi) );
+  gpio_free( nIRQ );
 
   return 0;
 }
@@ -302,50 +347,11 @@ static int __init sja1000_raspi_init( void ) {
   if( err )
     goto fail;
 
-  err = gpio_request_one( ALE, GPIOF_OUT_INIT_LOW, "ALE" );
-  if( err ) {
-    printk( KERN_ERR "%s: Cannot request GPIO %d! Error: %d\n", DRV_NAME, ALE, err );
-    goto fail;
-  }
-
-  err = gpio_request_one( nRD, GPIOF_OUT_INIT_HIGH, "nRD" );
-  if( err ) {
-    printk( KERN_ERR "%s: Cannot request GPIO %d! Error: %d\n", DRV_NAME, nRD, err );
-    goto fail;
-  }
-  err = gpio_request_one( nWR, GPIOF_OUT_INIT_HIGH, "nWR" );
-  if( err ) {
-    printk( KERN_ERR "%s: Cannot request GPIO %d! Error: %d\n", DRV_NAME, nWR, err );
-    goto fail;
-  }
-  err = gpio_request_one( nCS, GPIOF_OUT_INIT_HIGH, "nCS" );
-  if( err ) {
-    printk( KERN_ERR "%s: Cannot request GPIO %d! Error: %d\n", DRV_NAME, nCS, err );
-    goto fail;
-  }
-  err = gpio_request_array( ADi, ARRAY_SIZE(ADi) );
-  if( err ) {
-    printk( KERN_ERR "%s: Cannot request GPIO array for AD ports! Error: %d\n", DRV_NAME, err );
-    goto fail;
-  }
-
-  err = gpio_request_one( nIRQ, GPIOF_IN, "nINT" );
-  if( err ) {
-    printk( KERN_ERR "%s: Cannot request GPIO %d! Error: %d\n", DRV_NAME, nIRQ, err );
-    goto fail;
-  }
-
   return 0;
 
  fail:
   if( sja1000_raspi_dev )
     platform_device_unregister( sja1000_raspi_dev );
-  gpio_free( ALE );
-  gpio_free( nRD );
-  gpio_free( nWR );
-  gpio_free( nCS );
-  gpio_free_array( ADi, ARRAY_SIZE(ADi) );
-  gpio_free( nIRQ );
 
   return err;
 }
@@ -353,13 +359,6 @@ static int __init sja1000_raspi_init( void ) {
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 static void __exit sja1000_raspi_exit( void ) {
-  gpio_free( ALE );
-  gpio_free( nRD );
-  gpio_free( nWR );
-  gpio_free( nCS );
-  gpio_free_array( ADi, ARRAY_SIZE(ADi) );
-  gpio_free( nIRQ );
-
   platform_driver_unregister( &sja1000_raspi_driver );
   if( sja1000_raspi_dev )
     platform_device_unregister( sja1000_raspi_dev );

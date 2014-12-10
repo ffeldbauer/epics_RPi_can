@@ -58,7 +58,7 @@ class CanTest {
   CanTest( const CanTest& );
   ~CanTest();
 
-  void ParseMessages();
+  //void ParseMessages();
 
   int                      _socket;
   std::string              _filename;
@@ -70,6 +70,7 @@ class CanTest {
   int                      _counter;
   unsigned int             _bitrate;
   bool                     _open;
+  int                      _mismatched;
 };
 
 #endif

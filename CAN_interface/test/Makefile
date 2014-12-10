@@ -4,7 +4,7 @@ ifneq ($(CROSS_COMPILE),)
 endif
 REMOVE		= rm -f
 REMOVEDIR	= rm -rf
-COPY		= cp
+COPY			= cp
 
 EXTRAINCDIRS 	= 
 EXTRALIBDIRS 	= 

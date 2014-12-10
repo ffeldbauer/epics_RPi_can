@@ -140,7 +140,7 @@ int main( int argc, char* argv[] ) {
   if ( 0 == bitrate )        bitrate    = DEFAULT_BITRATE;
 
   CanTest::create( filename, devicename );
-  CanTest::getInstance()->setBitrate( bitrate );
+  //CanTest::getInstance()->setBitrate( bitrate ); // Setting bitrate requires root privileges
   CanTest::getInstance()->CanOpen();
     
   signal( SIGTERM, signal_handler );

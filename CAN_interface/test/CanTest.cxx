@@ -63,8 +63,27 @@ CanTest* CanTest::_pinstance = NULL;
 //_____ L O C A L S ____________________________________________________________
 
 //_____ F U N C T I O N S ______________________________________________________
+bool operator==( const can_frame_t& lhs, const can_frame_t& rhs ) {
+  if ( ( lhs.can_id != rhs.can_id ) || ( lhs.can_dlc != rhs.can_dlc ) )
+    return false;
 
-CanTest::CanTest() {
+  for ( epicsUInt8 i = 0; i < lhs.can_dlc; i++ ) {
+    if( lhs.data[i] != rhs.data[i] ) return false;
+  }
+  return true;
+}
+
+//------------------------------------------------------------------------------
+
+CanTest::CanTest()
+  : _devName( "can0" ),
+    _start(0),
+    _stop(0),
+    _counter(0),
+    _open( false ),
+    _mismatched(0)
+{ 
+  ParseMessages();
 }
 
 //------------------------------------------------------------------------------
@@ -75,7 +94,8 @@ CanTest::CanTest( std::string& filename, std::string& devicename )
     _start( 0 ),
     _stop( 0 ),
     _counter( 0 ),
-    _open( false )
+    _open( false ),
+    _mismatched( 0 )
 { 
   ParseMessages();
 }
@@ -189,6 +209,7 @@ void CanTest::printDiag() {
             << "  Bitrate                         " << _bitrate << "\n"
             << "  Frames received/transmitted     " << _counter << "\n"
             << "  Frames/s                        " << fps << "\n"
+            << "  Mismatched counted              " << _mismatched << "\n"
             << std::endl;
 }
 
@@ -274,21 +295,22 @@ void CanTest::ParseMessages() {
   } else {
 
   // create 20 random CAN frames for transmit tests
-  for( int i = 0; i < 20; i++ ) {
-    can_frame_t *pframe = new can_frame_t;
-    time_t t;
-
-    time(&t);
-    srand( (unsigned int)t );
-
-    pframe->can_id = rand() % CAN_EFF_MASK;
-    if ( pframe->can_id > CAN_SFF_MASK ) pframe->can_id |= CAN_EFF_FLAG;
-    pframe->can_dlc = rand() % 9;
-    for( unsigned int j = 0; j < pframe->can_dlc; j++ )  pframe->data[i] = rand() % 255;
-
-    _msgList.push_back( pframe );
-
-  }
+//  for( int i = 0; i < 20; i++ ) {
+//    can_frame_t *pframe = new can_frame_t;
+//    time_t t;
+//
+//    time(&t);
+//    srand( (unsigned int)t );
+//
+//    pframe->can_id = rand() % CAN_EFF_MASK;
+//    if ( pframe->can_id > CAN_SFF_MASK ) pframe->can_id |= CAN_EFF_FLAG;
+//    pframe->can_dlc = rand() % 9;
+//    for( unsigned int j = 0; j < pframe->can_dlc; j++ )  pframe->data[i] = rand() % 255;
+//
+//    _msgList.push_back( pframe );
+//  }
+  _msgList.push_back( new can_frame_t( 0x97fb, 8, 0x58, 0x93, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff ) );
+  _msgList.push_back( new can_frame_t( 0x9f2e, 8, 0x0f, 0x1e, 0x2d, 0x3c, 0x4b, 0x5a, 0x69, 0x78 ) );
 }
 
 //------------------------------------------------------------------------------
@@ -353,10 +375,13 @@ void CanTest::transmitTest( unsigned int dwMaxTimeInterval, unsigned int dwMaxLo
 
 //------------------------------------------------------------------------------
 
-void CanTest::receiveTest( unsigned int dwMaxLoop ) {
+void CanTest::receiveTest( unsigned int dwMaxLoop ) { 
   can_frame_t *pframe = new can_frame_t;
+  std::list<can_frame_t*>::const_iterator it = _msgList.cbegin();
   time( &_start );
+
   if( 0 != dwMaxLoop ) {
+
     for ( unsigned int count = 0; count < dwMaxLoop; count++ ) {
       int nbytes = read( _socket, pframe, sizeof(can_frame_t) );
       if ( 0 > nbytes ) {
@@ -366,7 +391,8 @@ void CanTest::receiveTest( unsigned int dwMaxLoop ) {
                << std::endl;
         throw CanFailure( errmsg );
       } else  {
-        _msgList.push_back( pframe );
+        if ( *pframe != *(*it) ) _mismatched++;
+        it++;
         _counter++;
       }
     }  
@@ -382,10 +408,12 @@ void CanTest::receiveTest( unsigned int dwMaxLoop ) {
                << std::endl;
         throw CanFailure( errmsg );
       } else  {
-        _msgList.push_back( pframe );
+        if ( *pframe != *(*it) ) _mismatched++;
+        it++;
         _counter++;
       }
     }
+
   }
   time( &_stop );
 }

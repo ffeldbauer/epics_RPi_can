@@ -1,2 +1,0 @@
-KERNEL=="rpi_can[0-9]", GROUP="tty", MODE="0660"
-

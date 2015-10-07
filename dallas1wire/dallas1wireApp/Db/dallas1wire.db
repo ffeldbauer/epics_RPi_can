@@ -7,14 +7,14 @@
 # ###                                                        ### #
 # ### Ref 1.0; 2013-04-02                                    ### #
 # ###                                                        ### #
-# ### macros: subsys  PANDA subsystem      (e.g. FEMC)       ### #
-# ###         ID      1wire ID of sensor                     ### #
+# ### macros: ID      1wire ID of sensor                     ### #
 ##################################################################
 
-record (ai, "PANDA:$(subsys):TEMP:$(ID):Tmom") {
+record (ai, "DS18S20:$(ID):Tmom") {
   field (DTYP, "dallas1wire")
   field (INP,  "@$(ID)")
   # display parameters
   field (EGU,  "degC")
   field (PREC, "3")
 }
+

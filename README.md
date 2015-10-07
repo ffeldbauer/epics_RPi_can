@@ -3,9 +3,12 @@
 This package is used by the PANDA collaboration for EPICS device support.
 It is devided into three sub packages:
 
-#### CAN_interface:
-Sources for the kernel module and test applications for the
-PANDA Raspberry Pi CANbus Extension Board
+__UPDATE__ Kernel Module was removed from this repository.
+It is now available in my fork of the raspberrypi/linux repository
+[here](https://github.com/ffeldbauer/PandaRPiKernel)
+
+#### CAN_test:
+Test application to test the socket-CAN driver
 
 #### drvAsynCan:
 EPICS device support module based on the asynPortDriver class from AsynDriver.
@@ -17,16 +20,13 @@ The following devices controlled via CAN bus interfaces are supported:
    -  Temperature and Humidity Monitoring board for PANDA (THMP)
    -  PANDA-EMC light pulser
    -  [TMCM142 1-axis stepper controller/driver](http://www.mocontronic.de/de/katalog/motorsteuerungen/TMCM-142-IF)(via CANbus)
+   -  PANDA FSC HV from Protvino
 
 #### dallas1wire:
 EPICS device support module to read out DS18S20 digital temperature sensors connected via
 dallas-1-wire to the Raspberry Pi Computer
 
 ## Dependencies
-
-#### CAN_interface:
--  For the kernel module to compile you need the kernel sources and headers
--  For the test program the libsocketcan is needed
 
 #### drvAsynCan
 -  [EPICS base 3.14.12.4 or later](http://www.aps.anl.gov/epics/)
@@ -36,9 +36,6 @@ dallas-1-wire to the Raspberry Pi Computer
 -  [EPICS base 3.14.12.4 or later](http://www.aps.anl.gov/epics/)
 
 ## Install
-
-#### CAN_interface:
- 1.  refer to CAN_interface/driver/README
 
 #### drvAsynCan
  1.  Edit configure/RELEASE and change the paths to ASYN and EPICS_BASE

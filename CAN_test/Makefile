@@ -11,7 +11,7 @@ EXTRALIBDIRS 	=
 
 OPT 		= 
 
-CPPFLAGS 	+= -O$(OPT) -Wall -std=gnu++0x
+CPPFLAGS 	+= -O$(OPT) -Wall -std=gnu++11
 CPPFLAGS 	+= $(patsubst %,-I%,$(EXTRAINCDIRS))
 
 LDFLAGS 	+= $(patsubst %,-L%,$(EXTRALIBDIRS))
@@ -55,7 +55,7 @@ gccversion:
 $(TARGET):	$(OBJ)
 		@echo
 		@echo $(MSG_LINKING) $@
-		$(CXX) $^ $(CPPFLAGS) $(LDFLAGS) -o $@
+		$(CXX) $(CPPFLAGS) $^ $(LDFLAGS) -o $@
 
 install: begin install_do end
 
@@ -79,3 +79,4 @@ $(shell mkdir $(OBJDIR) 2>/dev/null)
 
 # Listing of phony targets.
 .PHONY : all begin end gccversion build clean clean_list install install_do uninstall
+

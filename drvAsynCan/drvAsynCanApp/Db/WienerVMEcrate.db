@@ -453,7 +453,7 @@ record (ai, "PANDA:$(subsys):VME$(ID):LV:C1:Vmom") {
   field (HHSV, "MAJOR")
   field (HSV,  "MINOR")
   field (LSV,  "MINOR")
-  field (LLSV, "MAJOR)"
+  field (LLSV, "MAJOR")
 }
 
 record (ai, "PANDA:$(subsys):VME$(ID):LV:C1:Imom") {

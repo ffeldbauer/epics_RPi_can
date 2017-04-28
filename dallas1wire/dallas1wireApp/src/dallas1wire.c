@@ -47,59 +47,36 @@
 
 /*_____ D E F I N I T I O N S ________________________________________________*/
 
-/* Forward declarations */
 static long init_record( aiRecord *prec );
 static long read_ai( aiRecord *prec );
 
-/*
- * Device Support Entry Table
- */
-struct {
-  long   number;                /* number of device support routines */
-  DEVSUPFUN   report;           /* print reports */
-  DEVSUPFUN   init;             /* initialization of device support module */
-  DEVSUPFUN   init_record;      /* initialization of single record instances */
-  DEVSUPFUN   get_ioint_info;   /* get I/O interrupt info */
-  DEVSUPFUN   process;          /* read/write value */
-  DEVSUPFUN   special_linconv;  /* Calculate ESLO from EGUL and EGUF for ai/ao records */
-} dev_ai_d1w = {
-  6,
-  NULL,
-  NULL,
-  init_record,
-  NULL,
-  read_ai,
-  NULL
-};
-
-/*
- * Our Device Private data structure
- */
 typedef struct {
-  epicsUInt8  fcode;
-  epicsUInt64 id;
-  char        filename[256];
+  long   number;
+  DEVSUPFUN   report;
+  DEVSUPFUN   init;
+  DEVSUPFUN   init_record;
+  DEVSUPFUN   get_ioint_info;
+  DEVSUPFUN   read_ai;
+  DEVSUPFUN   special_linconv;
+} dev_dset_d1w_t;
+
+typedef struct {
+  int fcode;
+  char id[20];
+  char filename[256];
 } d1w_info_t;
 
 /*_____ G L O B A L S ________________________________________________________*/
 
 /*_____ L O C A L S __________________________________________________________*/
+dev_dset_d1w_t dev_ai_d1w = { 6, NULL, NULL, init_record, NULL, read_ai, NULL };
+epicsExportAddress( dset, dev_ai_d1w );
 
 /*_____ F U N C T I O N S ____________________________________________________*/
 
-/*------------------------------------------------------------------------------
- * @brief   Print error message to IOCshell
- *
- * Prints an error message to STDERR of the IOCshell and sets the
- * status and severity of the record which caused the error.
- *
- * @param   [in]  prec    Address of record
- * @param   [in]  pinfo   Address of device support info structure
- * @param   [in]  status  Reason of error
- *----------------------------------------------------------------------------*/
 static void errMsg( aiRecord *prec, d1w_info_t *pinfo, long status ) {
   epicsAlarmCondition stat = READ_ALARM;
-  epicsAlarmSeverity sevr  = INVALID_ALARM;
+  epicsAlarmSeverity sevr = INVALID_ALARM;
 
   switch( status ) {
   case -1:
@@ -136,52 +113,29 @@ static void errMsg( aiRecord *prec, d1w_info_t *pinfo, long status ) {
  *          -2: CRC did not match
  *          -3: Parsing failed
  *----------------------------------------------------------------------------*/
-static long readValue( const d1w_info_t *pinfo, epicsFloat64* value ){
-  /* In C all variables have to be declared before the first line of code! */
+static long readValue( const d1w_info_t *pinfo, double* value ){
 	FILE * pFile;
-  epicsUInt32 dummy = 0;
-  epicsUInt32 num = 0;
+  int dummy = 0;
+  int num = 0;
 	char crcMatch[5];
-
-  /* Open the dallas1wire device file for reading */
   pFile = fopen ( pinfo->filename, "r" );
-  if( !pFile ) return -1;
+	if( !pFile ) return -1;
 
-  /*
-   * Parse first line:
-   * 2d 00 4b 46 ff ff 02 10 19 : crc=19 YES
-   * The first 9 hex values are the actual message from the device which we ignore
-   * we only want to know if the checksum did match or not.
-   * num will be set to the number of parsed values, so it should be one.
-   */
 	num = fscanf( pFile, "%*x %*x %*x %*x %*x %*x %*x %*x %*x : crc=%*x %s", crcMatch );
   if ( 1 != num ) {
 	  fclose( pFile );
 		return -3;
 	}
-
-  /*
-   * Compare the parsed cstring to the constant "YES"
-   * if they do not match (return value of strcmp is not 0)
-   * there was an error during the communication with the device
-   */
 	if( strcmp( crcMatch, "YES" ) != 0 ){
 	  fclose( pFile );
 		return -2;
 	}
 
-  /*
-   * Parse second line:
-   * 2d 00 4b 46 ff ff 02 10 19 t=22625
-   * Again the first 9 hex values are of no interrest.
-   * We only want the last number which is the measured temperature in millicentigrade
-   */
 	num = fscanf( pFile, "%*x %*x %*x %*x %*x %*x %*x %*x %*x t=%u", &dummy );
 	fclose( pFile );
   if ( 1 != num ) return -3;
+  *value = dummy / 1000.;
 
-  /* "convert" the temperature to centigrade */
-  *value = dummy / 1000.; 
 
   return 0;
 }
@@ -196,45 +150,30 @@ static long readValue( const d1w_info_t *pinfo, epicsFloat64* value ){
 static long init_record( aiRecord *prec ) {
   d1w_info_t *pinfo;
   d1w_info_t d1w_info;
-  epicsFloat64 value = 0.;
+  double value = 0.;
   long status = 0;
-  epicsUInt8  familycode = 0;
-  epicsUInt64 chipid;
+  int familycode = 0;
+  char tmp[20];
 
-  /* disable record */
-  prec->pact = (epicsUInt8)true; 
+  prec->pact = (epicsUInt8)true; /* disable record */
 
-  /*
-   * Parse the string within INP field (the leading @ is omitted)
-   * We split here the Familycode (first 2 digit hex number)
-   * from the rest of the unique id
-   * This allows us to extend this device support module for other D1W chips
-   * which may have a different output format
-   */
-  if ( sscanf( prec->inp.value.instio.string, "%x-%x", &familycode, chipid ) != 2 ) {
+  if ( sscanf( prec->inp.value.instio.string, "%x-%20s", &familycode, tmp ) != 2 ) {
     fprintf( stderr, "\033[31;1m%s: Invalid value of INP field '%s'\033[0m\n",
              prec->name, prec->inp.value.instio.string );
     return -1;
   }
-  /*
-   * Up to now this Support module only support temperature sensors
-   * e.g. DS18S20
-   * So we check the familycode
-   */
   if ( 0x28 != familycode && 0x10 != familycode ) {
     fprintf( stderr, "\033[31;1m%s: Invalid family code '%d'\033[0m\n",
              prec->name, familycode );
     return -1;
   }
 
-  /* fill our temporary info structure */
   d1w_info.fcode = familycode;
-  d1w_info.id    = chidpid;
-  sprintf( d1w_info.filename, "/sys/devices/w1_bus_master1/%02x-%012x/w1_slave",
-           familycode, chipid );
+  strcpy( d1w_info.id, tmp );
+  sprintf( d1w_info.filename, "/sys/devices/w1_bus_master1/%x-%s/w1_slave",
+           familycode, tmp );
 
   status = readValue( &d1w_info, &value );
-  /* if CRC mismatched, try again */
   if ( -2 == status ) status = readValue( &d1w_info, &value );
   if ( status ) {
     errMsg ( prec, &d1w_info, status );
@@ -242,19 +181,15 @@ static long init_record( aiRecord *prec ) {
   }
   prec->val = value;
 
-  /* allocate memory for the "persistent" info structure */
   pinfo = (d1w_info_t *) calloc( 1, sizeof( d1w_info_t ) );
   assert( NULL != pinfo );
-  /* Copy the memory from temporary to persistent info structure */
   memcpy( pinfo, &d1w_info, sizeof( d1w_info ) );
   assert( NULL == prec->dpvt );
 
-  /* Set values of record */
   prec->dpvt = pinfo;
   prec->linr = 0;
   prec->udf  = FALSE;
-  /* enable record */
-  prec->pact = (epicsUInt8)false; 
+  prec->pact = (epicsUInt8)false; /* enable record */
 
   return 2;
 }
@@ -268,7 +203,7 @@ static long init_record( aiRecord *prec ) {
  *----------------------------------------------------------------------------*/
 static long read_ai( aiRecord *prec ) {
   d1w_info_t *pinfo = (d1w_info_t *)prec->dpvt;
-  epicsFloat64 value = 0.;
+  double value = 0.;
   long status = 0;
 
   status = readValue( pinfo, &value );
@@ -282,9 +217,5 @@ static long read_ai( aiRecord *prec ) {
   return 2;
 }
 
-/*------------------------------------------------------------------------------
- * @brief   Export address of Device Support Entry Table to EPICS IOCshell
- *----------------------------------------------------------------------------*/
-epicsExportAddress( dset, dev_ai_d1w );
 
 /* EOF */

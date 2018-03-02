@@ -1,0 +1,3 @@
+[submodule "drvAsynCan"]
+	path = drvAsynCan
+	url = https://github.com/ffeldbauer/drvAsynCan.git
